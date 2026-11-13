@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { openStructuredCodexRpcHarness } from '../rpc/methods/structured-sessions/structured-codex-session-rpc-test-harness'
 import {
   HOST_TEST_SESSION,
+  HOST_TEST_NOW,
   hostTestMessage,
   hostTestOperationId
 } from '../../native-chat/agent-session-wire/host/testing/structured-agent-session-host-test-data'
@@ -85,7 +86,7 @@ describe('a bound Codex chat after the structured runtime restarts', () => {
         accountHome: assignedHome,
         accountBinding
       },
-      { claimKeyId: 'key-1', now: Date.now() }
+      { claimKeyId: 'key-1', now: HOST_TEST_NOW }
     )
     await seedTestAgentSessionRecordStore(harness.root, { records: [record] })
     let host = await ensureStructuredAgentSessionHost(hostConfig())
