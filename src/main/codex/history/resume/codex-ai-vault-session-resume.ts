@@ -18,7 +18,8 @@ type CodexAiVaultRuntimeHome = Pick<
   | 'isHostSystemDefaultRealHomeSelected'
   | 'resolveSelectedHostAccountCodexHomePathForResume'
   | 'getHostCodexHomePathsForSessionDiscovery'
->
+> &
+  Partial<Pick<CodexRuntimeHomeService, 'resolveManagedAccountHome'>>
 
 type CodexAiVaultResumeOptions = {
   runtimeHome: CodexAiVaultRuntimeHome | null
@@ -55,8 +56,22 @@ export async function prepareCodexAiVaultSessionResume(
       options.runtimeHome?.isHostSystemDefaultRealHomeSelected() === true,
     getSelectedHostAccountCodexHomePath: () =>
       options.runtimeHome?.resolveSelectedHostAccountCodexHomePathForResume() ?? null,
+    resolveManagedAccountHome: (accountId) => {
+      if (!options.runtimeHome?.resolveManagedAccountHome) {
+        throw new Error('The assigned Codex account home resolver is unavailable.')
+      }
+      return options.runtimeHome.resolveManagedAccountHome(accountId)
+    },
     systemCodexHomePath: options.systemCodexHomePath
   })
+  if (args.accountBinding?.provider === 'codex' && args.fork && result.substituteCodexHome) {
+    try {
+      await options.preparePinnedLaunchHome(result.substituteCodexHome)
+    } catch (error) {
+      // Hook repair is best-effort; the copied rollout is already pinned to the assigned home.
+      console.warn('[codex-ai-vault-resume] could not ready the assigned fork home:', error)
+    }
+  }
   // Forks have no provider session to trigger spawn-time setup; ready retained row homes here.
   if (args.fork && !result.useRealCodexHome && !result.substituteCodexHome) {
     try {

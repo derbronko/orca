@@ -1,4 +1,5 @@
 import type { Repo } from '../../../shared/repo-types'
+import { normalizeAgentAccountPreferences } from '../../../shared/agent-accounts/agent-account-preference'
 import { getRepoExecutionHostId } from '../../../shared/execution-host'
 import { getDefaultRepoHookSettings } from '../../../shared/constants'
 import { isFolderRepo } from '../../../shared/repo-kind'
@@ -42,6 +43,7 @@ export function hydrateRepo(repo: Repo, gitUsernameCache: ReadonlyMap<string, st
     defaultJiraProject: rawDefaultJiraProject,
     customWorktreeVisibilitySources: rawCustomWorktreeVisibilitySources,
     worktreeVisibilitySourcePreferences: rawWorktreeVisibilitySourcePreferences,
+    agentAccounts: rawAgentAccounts,
     orcadRetained: rawOrcadRetained,
     ...repoWithoutIcon
   } = repo
@@ -61,6 +63,7 @@ export function hydrateRepo(repo: Repo, gitUsernameCache: ReadonlyMap<string, st
   const worktreeVisibilitySourcePreferences = normalizeWorktreeVisibilitySourcePreferences(
     rawWorktreeVisibilitySourcePreferences
   )
+  const agentAccounts = normalizeAgentAccountPreferences(rawAgentAccounts)
   const orcadRetained = normalizeOrcadRetainedMarker(rawOrcadRetained)
   // Hydrate cached identity only; stuck git/gh probes froze Windows startup (#7225).
   const gitUsername = isFolderRepo(repo)
@@ -86,6 +89,7 @@ export function hydrateRepo(repo: Repo, gitUsernameCache: ReadonlyMap<string, st
     ...(worktreeVisibilitySourcePreferences !== undefined
       ? { worktreeVisibilitySourcePreferences }
       : {}),
+    ...(agentAccounts !== undefined ? { agentAccounts } : {}),
     ...(orcadRetained ? { orcadRetained } : {}),
     kind: isFolderRepo(repo) ? 'folder' : 'git',
     gitUsername,

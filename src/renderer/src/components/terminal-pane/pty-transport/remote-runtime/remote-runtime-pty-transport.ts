@@ -65,6 +65,7 @@ import type {
 } from '../../../../../../shared/runtime-terminal-contracts'
 import type { RuntimeTerminalSend } from '../../../../../../shared/runtime-terminal-send-contract'
 import { SAVED_RESUME_ORIGIN_RUNTIME_CAPABILITY } from '../../../../../../shared/protocol-version'
+import { AGENT_SESSION_ACCOUNT_BINDING_RUNTIME_CAPABILITY } from '../../../../../../shared/agent-session/agent-session-create-capabilities'
 import { TERMINAL_CREATE_IDEMPOTENCY_RUNTIME_CAPABILITY } from '../../../../../../shared/terminal/runtime-policy/terminal-runtime-capabilities'
 import { agentResumeHostAuthorityCapability } from '../../../../runtime/hosted-terminals/creation/agent-launch/agent-resume-host-authority-capability'
 import {
@@ -3638,6 +3639,16 @@ export function createRemoteRuntimePtyTransport(
       const envToSend = options.env ?? env
       const envToDeleteToSend = options.envToDelete ?? envToDelete
       const launchConfigToSend = options.launchConfig ?? launchConfig
+      const accountBindingToSend = launchConfigToSend?.accountBinding
+      if (
+        accountBindingToSend &&
+        !(await runtimeEnvironmentSupportsCapability(
+          createEnvironmentId,
+          AGENT_SESSION_ACCOUNT_BINDING_RUNTIME_CAPABILITY
+        ))
+      ) {
+        throw new Error('agent_session_account_binding_unsupported')
+      }
       const resumeProviderSessionToSend = options.resumeProviderSession ?? resumeProviderSession
       const launchTokenToSend = options.launchToken ?? launchToken
       const launchAgentToSend = options.launchAgent ?? launchAgent
@@ -3802,6 +3813,7 @@ export function createRemoteRuntimePtyTransport(
                     ...(launchConfigToSend?.ompResumeFilePath
                       ? { ompResumeFilePath: launchConfigToSend.ompResumeFilePath }
                       : {}),
+                    ...(accountBindingToSend ? { accountBinding: accountBindingToSend } : {}),
                     ...(agentArgsOverride !== undefined ? { agentArgs: agentArgsOverride } : {}),
                     ...(agentLaunchPreferences
                       ? { launchPreferences: agentLaunchPreferences }
@@ -3828,6 +3840,9 @@ export function createRemoteRuntimePtyTransport(
                               worktreeId,
                               agent: launchAgentToSend!,
                               ...composed,
+                              ...(accountBindingToSend
+                                ? { accountBinding: accountBindingToSend }
+                                : {}),
                               ...promptRequest
                             })
                           }

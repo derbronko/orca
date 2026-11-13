@@ -157,6 +157,51 @@ function claudeShellProbe(root: string): (env: Record<string, string>, rc?: stri
 }
 
 describe('ClaudeProfileRouter', () => {
+  it('prepares the requested account without publishing or relying on the selected-account pointer', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const f = fixture()
+    signIn(f.home('b'), 'b@example.test')
+
+    const preparation = f.router.prepareExplicitAccountForLaunch('b')
+    await vi.advanceTimersByTimeAsync(0)
+    f.setup.settle()
+
+    await expect(preparation).resolves.toMatchObject({
+      configDir: f.home('b'),
+      provenance: 'profile:b',
+      envPatch: { CLAUDE_CONFIG_DIR: f.home('b'), ORCA_CLAUDE_INJECTED_CONFIG_DIR: f.home('b') }
+    })
+    expect(f.settings.activeClaudeManagedAccountId).toBe('a')
+    expect(existsSync(f.router.pointerPath)).toBe(false)
+  })
+
+  it('resolves an explicit account home read-only without consulting global selection', () => {
+    const f = fixture()
+    signIn(f.home('b'), 'b@example.test')
+
+    expect(f.router.resolveExplicitAccountHome('b')).toBe(f.home('b'))
+    expect(f.settings.activeClaudeManagedAccountId).toBe('a')
+    expect(existsSync(f.router.pointerPath)).toBe(false)
+  })
+
+  it('refuses an explicit account that only aliases the mutable System default login', async () => {
+    const f = fixture()
+    signIn(f.userHome, 'a@example.test')
+
+    await expect(f.router.prepareExplicitAccountForLaunch('a')).rejects.toThrow()
+    expect(f.settings.activeClaudeManagedAccountId).toBe('a')
+    expect(existsSync(f.router.pointerPath)).toBe(false)
+  })
+
+  it('refuses an explicit account that is missing or signed out', async () => {
+    const f = fixture()
+
+    await expect(f.router.prepareExplicitAccountForLaunch('missing')).rejects.toThrow()
+    await expect(f.router.prepareExplicitAccountForLaunch('b')).rejects.toThrow()
+    expect(f.settings.activeClaudeManagedAccountId).toBe('a')
+    expect(existsSync(f.router.pointerPath)).toBe(false)
+  })
+
   it('runs an account with no login of its own on System default while that is signed in to it', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     const f = fixture()

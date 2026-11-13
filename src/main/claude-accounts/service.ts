@@ -122,6 +122,14 @@ export class ClaudeAccountService {
     return this.runtimeAuth.getRuntimeConfigDir(target)
   }
 
+  prepareManagedAccountForLaunch(accountId: string, target?: ClaudeAccountSelectionTarget) {
+    return this.runtimeAuth.prepareForClaudeLaunch(target, { accountId })
+  }
+
+  resolveManagedAccountHome(accountId: string, target?: ClaudeAccountSelectionTarget): string {
+    return this.runtimeAuth.resolveManagedAccountHome(accountId, target)
+  }
+
   private signInHidden(
     request: ClaudeSignInRequest,
     copyLink: boolean

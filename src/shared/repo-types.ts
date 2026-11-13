@@ -12,6 +12,7 @@ import type { OrcadRetainedMarker } from './orcad-retained-marker'
 import type { EditorFormatter } from './editor-formatter'
 import type { AgentWorkspaceTrustDecision } from './agent-launch/permissions/agent-workspace-trust-decision'
 import type { RepoWorkspaceCleanupPolicy } from './workspace-cleanup/workspace-cleanup-policy'
+import type { AgentAccountPreferences } from './agent-accounts/agent-account-preference'
 
 export type RepoKind = 'git' | 'folder'
 
@@ -43,6 +44,8 @@ export type WorktreeVisibilityDefaults = {
 
 export type Repo = {
   id: string
+  /** Compatibility backing for host-local ProjectHostSetup account defaults. */
+  agentAccounts?: AgentAccountPreferences
   path: string
   displayName: string
   badgeColor: string

@@ -114,8 +114,9 @@ export async function prepareStructuredAgentSessionCreateForWorktree(args: {
           (source) => args.runtime.getStructuredAgentCliSourceRoute(source)
         )
       : undefined)
-  // Adoption replay may need the record loaded from disk before source discovery can be skipped.
-  let host = args.resumeFrom || args.forkFrom ? await args.ensureHost() : null
+  // A create retry can be fresh-shaped while its committed record is already on disk. Load the
+  // journal before resolving account defaults so replay is authoritative after a cold restart.
+  const host = await args.ensureHost()
   const resolved = await args.runtime.resolveStructuredAgentSessionCreateIntent({
     envelope: args.envelope,
     worktree: args.worktree,
@@ -130,7 +131,6 @@ export async function prepareStructuredAgentSessionCreateForWorktree(args: {
     sessionId: args.envelope.sessionId,
     fields: attachFingerprintFields({ ...resolved, envelope: args.envelope })
   })
-  host ??= await args.ensureHost()
   const priorOperation =
     args.atRest === undefined
       ? null

@@ -43,6 +43,7 @@ export function savedStructuredAgentSessionStatus(
     sessionId: record.sessionId,
     workspaceId: record.location.workspaceId,
     agent: record.provider,
+    ...(record.accountBinding ? { accountBinding: record.accountBinding } : {}),
     status: turn || markerAt !== undefined ? 'idle' : null,
     latestPrompt: turn?.prompt ?? '',
     runtimePermission: null,

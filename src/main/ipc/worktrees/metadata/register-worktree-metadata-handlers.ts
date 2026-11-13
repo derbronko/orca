@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron'
-import type { WorktreeMeta } from '../../../../shared/worktree/meta-types'
+import type { WorktreeMetaUpdate } from '../../../../shared/worktree/meta-types'
 import { displayNameUpdatePinsLabel } from '../../../../shared/worktree/metadata/display-name-provenance'
 import { parseExecutionHostId } from '../../../../shared/execution-host'
 import { stripOrcaProvenanceMetaUpdates } from '../../../workspaces/removal/worktree-removal-safety'
@@ -33,7 +33,7 @@ export function registerWorktreeMetadataHandlers(context: WorktreeIpcContext): v
       args: {
         worktreeId: string
         executionHostId?: string
-        updates: Partial<WorktreeMeta>
+        updates: WorktreeMetaUpdate
       }
     ) => {
       const executionHostId =

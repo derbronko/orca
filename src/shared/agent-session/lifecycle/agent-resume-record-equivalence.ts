@@ -15,7 +15,9 @@ export function launchConfigsEqual(
   if (
     a.agentCommand !== b.agentCommand ||
     a.agentArgs !== b.agentArgs ||
-    a.ompResumeFilePath !== b.ompResumeFilePath
+    a.ompResumeFilePath !== b.ompResumeFilePath ||
+    a.accountBinding?.provider !== b.accountBinding?.provider ||
+    a.accountBinding?.accountId !== b.accountBinding?.accountId
   ) {
     return false
   }

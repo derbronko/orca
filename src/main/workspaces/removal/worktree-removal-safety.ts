@@ -1,5 +1,5 @@
 import { lstat, stat, readFile, realpath } from 'node:fs/promises'
-import type { WorktreeMeta } from '../../../shared/worktree/meta-types'
+import type { WorktreeMeta, WorktreeMetaUpdate } from '../../../shared/worktree/meta-types'
 import type { GitWorktreeInfo } from '../../../shared/worktree/types'
 import { NESTED_WORKTREE_REMOVAL_PREFIX } from '../../../shared/worktree/removal/nested-removal'
 import { areWorktreePathsEqual } from '../../git/worktrees/catalog/worktree-path-comparison'
@@ -194,9 +194,13 @@ function hasLegacyOrcaCreationEvidence(
   )
 }
 
+export function stripOrcaProvenanceMetaUpdates(updates: WorktreeMetaUpdate): WorktreeMetaUpdate
 export function stripOrcaProvenanceMetaUpdates(
-  updates: Partial<WorktreeMeta> | null | undefined
-): Partial<WorktreeMeta> {
+  updates: Partial<WorktreeMeta>
+): Partial<WorktreeMeta>
+export function stripOrcaProvenanceMetaUpdates(
+  updates: WorktreeMetaUpdate | Partial<WorktreeMeta> | null | undefined
+): WorktreeMetaUpdate | Partial<WorktreeMeta> {
   const sanitized = { ...updates }
   for (const key of ORCA_OWNED_PROVENANCE_META_KEYS) {
     delete sanitized[key]

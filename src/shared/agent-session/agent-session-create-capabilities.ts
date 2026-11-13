@@ -21,6 +21,10 @@ export const AGENT_SESSION_SEND_OPTIONS_RUNTIME_CAPABILITY =
 // Terminal create/ensure are strict: send accountEnv only to hosts advertising support.
 export const AGENT_SESSION_ACCOUNT_ENV_RUNTIME_CAPABILITY = 'agent-session.account-env.v1' as const
 
+// Terminal create/ensure must verify exact managed-account routing before accepting a pin.
+export const AGENT_SESSION_ACCOUNT_BINDING_RUNTIME_CAPABILITY =
+  'agent-session.account-binding.v1' as const
+
 // Why: `agentSession.create` is a strict object, so an older host refuses `optionsMode`. A host
 // advertising this replaces a chat's model selection with explicit launch options.
 export const AGENT_SESSION_CREATE_OPTIONS_MODE_RUNTIME_CAPABILITY =
@@ -54,6 +58,7 @@ export const AGENT_SESSION_CREATE_RUNTIME_CAPABILITIES = [
   AGENT_SESSION_CREATE_TAB_PLACEMENT_RUNTIME_CAPABILITY,
   AGENT_SESSION_SEND_OPTIONS_RUNTIME_CAPABILITY,
   AGENT_SESSION_ACCOUNT_ENV_RUNTIME_CAPABILITY,
+  AGENT_SESSION_ACCOUNT_BINDING_RUNTIME_CAPABILITY,
   AGENT_SESSION_SEND_SKILLS_RUNTIME_CAPABILITY,
   AGENT_SESSION_RESUME_EFFORT_RUNTIME_CAPABILITY
 ] as const

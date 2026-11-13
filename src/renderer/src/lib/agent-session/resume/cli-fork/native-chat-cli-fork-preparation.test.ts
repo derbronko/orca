@@ -62,6 +62,22 @@ it.each([true, false])(
   }
 )
 
+it('retains the chat binding in the prepared CLI fork session', async () => {
+  const accountBinding = { provider: 'claude', accountId: 'managed-claude-a' }
+  call
+    .mockResolvedValueOnce({
+      capabilities: [AI_VAULT_CHAT_FORK_SOURCE_CAPABILITY]
+    })
+    .mockResolvedValueOnce({
+      useRealCodexHome: false,
+      cliForkSource: { ...source, accountBinding }
+    })
+
+  await expect(prepareNativeChatCliFork(subject, options)).resolves.toMatchObject({
+    session: { accountBinding }
+  })
+})
+
 it('bounds legacy inventory observation at 150 seconds and revokes its queued signal', async () => {
   vi.useFakeTimers()
   call

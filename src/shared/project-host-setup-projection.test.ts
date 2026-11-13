@@ -105,6 +105,32 @@ describe('project host setup projection', () => {
     })
   })
 
+  it('projects repo-backed account preferences into the host setup without sharing Project defaults', () => {
+    const projection = projectHostSetupProjectionFromRepos([
+      repo({
+        id: 'local',
+        path: '/Users/alice/orca',
+        displayName: 'orca',
+        agentAccounts: { claude: { accountId: 'local-account' } }
+      }),
+      repo({
+        id: 'remote',
+        path: '/home/alice/orca',
+        displayName: 'orca',
+        connectionId: 'gpu-vm',
+        agentAccounts: { claude: { accountId: 'remote-account' } }
+      })
+    ])
+
+    expect(
+      projection.setups.map(({ hostId, agentAccounts }) => ({ hostId, agentAccounts }))
+    ).toEqual([
+      { hostId: 'local', agentAccounts: { claude: { accountId: 'local-account' } } },
+      { hostId: 'ssh:gpu-vm', agentAccounts: { claude: { accountId: 'remote-account' } } }
+    ])
+    expect(projection.projects[0]).not.toHaveProperty('agentAccounts')
+  })
+
   it('groups repo checkouts with the same provider identity under one project', () => {
     const projection = projectHostSetupProjectionFromRepos([
       repo({

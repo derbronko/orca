@@ -9,6 +9,7 @@ import type {
 } from '../../../../../../shared/agent-session/agent-session-host-authority'
 import type { SessionOptionValue } from '../../../../../../shared/native-chat/input/native-chat-session-options'
 import type { TuiAgent } from '../../../../../../shared/agent-launch/catalog/tui-agent'
+import type { ManagedAgentAccountRef } from '../../../../../../shared/agent-accounts/agent-account-preference'
 import {
   runtimeEnvironmentSupportsCapability,
   runtimeEnvironmentSupportsCapabilities
@@ -32,6 +33,7 @@ export function agentSessionCreateRequest(args: {
   prompt?: string
   promptDelivery?: AgentPromptDelivery
   launchPreferences?: AgentLaunchPreferences
+  accountBinding?: ManagedAgentAccountRef
 }) {
   return {
     worktree: toRuntimeWorktreeSelector(args.worktreeId),
@@ -48,6 +50,7 @@ export function agentSessionCreateRequest(args: {
     ...(args.prompt ? { prompt: args.prompt } : {}),
     ...(args.promptDelivery ? { promptDelivery: args.promptDelivery } : {}),
     ...(args.launchPreferences ? { launchPreferences: args.launchPreferences } : {}),
+    ...(args.accountBinding ? { accountBinding: args.accountBinding } : {}),
     presentation: 'background' as const
   }
 }

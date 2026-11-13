@@ -4,6 +4,7 @@ import {
 } from '../../../../shared/agent-session/lifecycle/agent-session-conversation-view'
 import { AGENT_CHAT_PERMISSION_MODE_OPTION_ID } from '../../../../shared/agent-launch/permissions/agent-chat-permission-mode'
 import {
+  AGENT_SESSION_BOUND_RECORD_SCHEMA_VERSION,
   AGENT_SESSION_RECORD_SCHEMA_VERSION,
   type AgentSessionRecord
 } from '../../../../shared/agent-session/lifecycle/agent-session-record'
@@ -15,6 +16,7 @@ export type AgentSessionRecordIdentity = Pick<
   | 'location'
   | 'provider'
   | 'accountHome'
+  | 'accountBinding'
   | 'options'
   | 'launchArgs'
   | 'launchDirectory'
@@ -31,11 +33,14 @@ export function agentSessionRecordIdentityFields(
     identity.options ?? {}
   const conversationName = normalizeAgentSessionConversationName(identity.conversationName)
   return {
-    schemaVersion: AGENT_SESSION_RECORD_SCHEMA_VERSION,
+    schemaVersion: identity.accountBinding
+      ? AGENT_SESSION_BOUND_RECORD_SCHEMA_VERSION
+      : AGENT_SESSION_RECORD_SCHEMA_VERSION,
     sessionId: identity.sessionId,
     location: identity.location,
     provider: identity.provider,
     accountHome: identity.accountHome,
+    ...(identity.accountBinding ? { accountBinding: identity.accountBinding } : {}),
     ...(identity.forkedFrom ? { forkedFrom: identity.forkedFrom } : {}),
     ...(Object.keys(options).length > 0 ? { options } : {}),
     ...(permissionMode ? { permissionMode } : {}),

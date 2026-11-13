@@ -83,6 +83,16 @@ it('keeps an earlier immutable response available while an unrelated later turn 
   })
 })
 
+it('carries a source record account binding into the fork attach request', async () => {
+  const test = source()
+  const accountBinding = { provider: 'codex', accountId: 'managed-codex-a' }
+  Object.assign(test.record, { schemaVersion: 3, accountBinding })
+
+  await expect(test.prepare()).resolves.toMatchObject({
+    accountBinding
+  })
+})
+
 it('keeps a checkpoint copy valid across a same-root source relaunch', async () => {
   const test = source()
   const nativeCopy = test.copy.getMockImplementation()!

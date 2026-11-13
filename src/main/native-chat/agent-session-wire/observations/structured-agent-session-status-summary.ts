@@ -71,6 +71,7 @@ export function structuredAgentSessionStatusSummary({
     ...(usageLimitContinue ? { usageLimitContinue } : {}),
     workspaceId: session.params.location.workspaceId,
     agent: session.params.provider,
+    ...(record?.accountBinding ? { accountBinding: record.accountBinding } : {}),
     ...(session.child || starting
       ? {
           hostExecutionOwned: true as const,

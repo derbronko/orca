@@ -8,6 +8,7 @@ import type {
 import type { AgentStatusState } from '../../agent-status/contracts/agent-status-types'
 import type { AgentMainAgentStatus } from '../../agent-status/lifecycle/main-agent-status'
 import type { TuiAgent } from '../../agent-launch/catalog/tui-agent'
+import type { ManagedAgentAccountRef } from '../../agent-accounts/agent-account-preference'
 
 export { agentProviderSessionsEqual } from './agent-provider-session-equality'
 
@@ -62,6 +63,7 @@ export type SleepingAgentLaunchConfig = {
   agentArgs: string
   agentEnv: Record<string, string>
   ompResumeFilePath?: string
+  accountBinding?: ManagedAgentAccountRef
 }
 
 export type SleepingAgentSessionRecord = {

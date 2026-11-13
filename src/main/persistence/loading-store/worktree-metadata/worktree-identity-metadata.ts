@@ -1,7 +1,6 @@
-import type { WorkspaceAttachmentMutation } from '../../../../shared/workspace-attachments/workspace-attachment-mutation'
 import type { DiffCommentBaseMutation } from '../../../../shared/diff-comment-mutation'
 import { randomUUID } from 'node:crypto'
-import type { WorktreeMeta } from '../../../../shared/worktree/meta-types'
+import type { WorktreeMeta, WorktreeMetaUpdate } from '../../../../shared/worktree/meta-types'
 import { LOCAL_EXECUTION_HOST_ID, type ExecutionHostId } from '../../../../shared/execution-host'
 import { canonicalWorktreeIdentity } from '../../../../shared/worktree/identity'
 import {
@@ -224,7 +223,7 @@ export function setWorktreeMetaForHost(
   scheduling: WriteSchedulingOperations,
   worktreeId: string,
   requestedHostId: ExecutionHostId,
-  meta: Partial<WorktreeMeta> & WorkspaceAttachmentMutation & DiffCommentBaseMutation
+  meta: WorktreeMetaUpdate & DiffCommentBaseMutation
 ): WorktreeMeta {
   const state = runtime.state
   const executionHostId = worktreeMetaHostFor(worktreeId, requestedHostId)

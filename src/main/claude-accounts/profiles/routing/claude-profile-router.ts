@@ -37,6 +37,10 @@ import {
 import { wslClaudeProfilePointer } from '../wsl/claude-profile-wsl-paths'
 import { isDirectory, listClaudeProfileHomes } from '../claude-profile-homes'
 import {
+  prepareExplicitClaudeAccountForLaunch,
+  resolveExplicitClaudeAccountHome
+} from './claude-explicit-account-preparation'
+import {
   claudeStateFile,
   readClaudeFolderLogin,
   removeClaudeAccountFolder,
@@ -203,6 +207,14 @@ export class ClaudeProfileRouter {
       throw new Error(CLAUDE_PROFILE_SETUP_FAILED_MESSAGE)
     }
     return profile.home
+  }
+
+  resolveExplicitAccountHome(accountId: string): string {
+    return resolveExplicitClaudeAccountHome(this, accountId)
+  }
+
+  async prepareExplicitAccountForLaunch(accountId: string): Promise<ClaudeRuntimeAuthPreparation> {
+    return prepareExplicitClaudeAccountForLaunch(this, accountId)
   }
 
   /** Wait for setup before deleting so it cannot recreate the folder. */

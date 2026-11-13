@@ -4,10 +4,10 @@ import { normalizeStoredTaskSourceContext } from '../../../../shared/work-items/
 import { normalizeWorkspaceLinkedItem } from '../../../../shared/workspace-attachments/workspace-linked-item'
 import { isWorkspaceLinkedItemSourceContextMatch } from '../../../../shared/workspace-attachments/workspace-linked-item-source-context'
 import { DEFAULT_WORKSPACE_STATUS_ID } from '../../../../shared/workspace-statuses'
-import type { WorktreeMeta } from '../../../../shared/worktree/meta-types'
+import type { WorktreeMeta, WorktreeMetaUpdate } from '../../../../shared/worktree/meta-types'
 import { WORKTREE_META_PERSISTED_DEFAULTS } from '../../../../shared/worktree/metadata/meta-persisted-defaults'
 import { normalizeGitHubPRSuppressionUpdate } from '../../../../shared/worktree/hosted-review/github-pr-suppression'
-import type { WorkspaceAttachmentMutation } from '../../../../shared/workspace-attachments/workspace-attachment-mutation'
+import { mergeAgentAccountPreferencePatch } from '../../../../shared/agent-accounts/agent-account-preference'
 import { normalizeWorkspaceAttachmentUpdate } from '../../../../shared/workspace-attachments/workspace-attachments'
 import {
   mergeDiffCommentMutation,
@@ -35,10 +35,18 @@ function createDefaultWorktreeMeta(): WorktreeMeta {
 
 export function mergeWorktreeMetaForWrite(
   existing: WorktreeMeta | undefined,
-  updates: Partial<WorktreeMeta> & WorkspaceAttachmentMutation & DiffCommentBaseMutation,
+  updates: WorktreeMetaUpdate & DiffCommentBaseMutation,
   identity?: WorktreeMetaIdentity
 ): WorktreeMeta {
-  const { diffCommentsBase, ...metaUpdates } = updates
+  const { diffCommentsBase, agentAccounts: accountPatch, ...otherMetaUpdates } = updates
+  const metaUpdates = {
+    ...otherMetaUpdates,
+    ...(accountPatch
+      ? {
+          agentAccounts: mergeAgentAccountPreferencePatch(existing?.agentAccounts, accountPatch)
+        }
+      : {})
+  }
   if (diffCommentsBase !== undefined && metaUpdates.diffComments !== undefined) {
     metaUpdates.diffComments = mergeDiffCommentMutation(
       diffCommentsBase,

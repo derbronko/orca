@@ -67,6 +67,12 @@ function fixture(accounts: ClaudeManagedAccount[] = [account('a'), account('b')]
       mkdirSync(home(id), { recursive: true })
       return { configDir: home(id), readPath: home(id) }
     }),
+    prepareForClaudeLaunch: vi.fn(async (_target, _options) => ({
+      configDir: home('b'),
+      envPatch: { CLAUDE_CONFIG_DIR: home('b') },
+      provenance: 'profile:b'
+    })),
+    resolveManagedAccountHome: vi.fn((id: string) => home(id)),
     removeAccountFolder: vi.fn(async (id: string) => rmSync(join(root, id), { recursive: true })),
     getRuntimeConfigDir: () => '/unused'
   }
@@ -107,6 +113,21 @@ function handOverClaudeSignInLink(windowsPath: string, link: string): void {
 }
 
 describe('ClaudeAccountService', () => {
+  it('delegates explicit preparation and read-only home resolution without selecting an account', async () => {
+    const f = fixture()
+
+    await expect(f.service.prepareManagedAccountForLaunch('b')).resolves.toMatchObject({
+      configDir: f.home('b'),
+      provenance: 'profile:b'
+    })
+    expect(f.runtimeAuth.prepareForClaudeLaunch).toHaveBeenCalledWith(undefined, {
+      accountId: 'b'
+    })
+    expect(f.service.resolveManagedAccountHome('b')).toBe(f.home('b'))
+    expect(f.runtimeAuth.resolveManagedAccountHome).toHaveBeenCalledWith('b', undefined)
+    expect(f.settings().activeClaudeManagedAccountId).toBe('a')
+  })
+
   it.each([
     { savedEmail: 'old@example.test', currentEmail: 'current@example.test' },
     { savedEmail: 'same@example.test', currentEmail: 'same@example.test' }

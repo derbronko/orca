@@ -31,3 +31,13 @@ export async function teardownFolderWorkspacePtys(
     console.warn(`[worktree-teardown] failed for ${worktreeId}:`, error)
   })
 }
+
+export function createFolderWorkspacePtyTeardown(
+  runtime: WorktreeTeardownRuntime,
+  getLocalProvider: () => IPtyProvider | null,
+  onPtyStopped: ((ptyId: string) => void) | null
+) {
+  const deps = { runtime, getLocalProvider, onPtyStopped }
+  return (worktreeId: string, connectionId: string | null) =>
+    teardownFolderWorkspacePtys(deps, worktreeId, connectionId)
+}

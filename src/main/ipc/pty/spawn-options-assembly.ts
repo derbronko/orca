@@ -29,12 +29,16 @@ import {
   stripInheritedAgentSessionEnv
 } from '../../../shared/agent-launch/startup/parent-agent-session-env'
 import { shouldSeedPreAttachPtySize } from './delivery/attached-pty-size'
+import type { ManagedAgentAccountRef } from '../../../shared/agent-accounts/agent-account-preference'
+import type { SleepingAgentLaunchConfig } from '../../../shared/agent-session/lifecycle/agent-session-resume'
+import { ptyAccountBindingEnvDeletions } from './host-env/pty-agent-account-binding'
 
 type TrustInput = Parameters<typeof applyAgentWorkspaceTrustToSpawn>[0]
 
 /** Carries deletions to provider-owned environments, including persistent older daemons. */
 export function assemblePtySpawnEnvDeletions(input: {
   env: Record<string, string> | undefined
+  accountBinding?: ManagedAgentAccountRef
   callerEnvToDelete: string[] | undefined
   /** Window only: an Agent Teams refresh drops TERM_PROGRAM; host callers pre-merge their own. */
   agentTeamsEnvToDelete: readonly string[]
@@ -68,6 +72,7 @@ export function assemblePtySpawnEnvDeletions(input: {
         : [],
       // Local/relay providers also merge ambient env, so remove inherited session stamps on every path.
       getInheritedAgentSessionStampEnvKeysToDelete(env),
+      ptyAccountBindingEnvDeletions(input.accountBinding),
       input.skipCodexHomeEnv ? CODEX_HOME_ENV_KEYS : [],
       // Persistent daemons must compare their own merged Codex home markers.
       input.stripInheritedOrcaCodexHome ? ['ORCA_CODEX_HOME'] : []
@@ -84,6 +89,7 @@ export type PtySpawnLaunchOptionsInput = {
     cols: number
     rows: number
     launchAgent?: unknown
+    launchConfig?: SleepingAgentLaunchConfig
     command?: string
     commandDelivery?: PtySpawnOptions['commandDelivery']
     startupCommandDelivery?: PtySpawnOptions['startupCommandDelivery']
@@ -200,6 +206,9 @@ export async function assemblePtySpawnLaunchOptions(input: PtySpawnLaunchOptions
   }
   if (input.spawnIntent) {
     spawnOptions.spawnIntent = input.spawnIntent
+  }
+  if (args.launchConfig?.accountBinding) {
+    spawnOptions.requiresAccountBindingRetention = true
   }
   const startupIngress = getStartupTerminalIngressIntent(args)
   if (startupIngress) {

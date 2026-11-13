@@ -5,14 +5,11 @@ import type { LegacyWorkerRecoveryCandidate } from '../orchestration/terminal-au
 
 import type { LegacyWorkerTerminalRecoveryPlan } from '../orchestration/terminal-authority/release/orchestration-legacy-worker-terminal-recovery'
 
-import { OrcaRuntimeWithTerminalDrivers } from '../terminal/driver/terminal-driver-resources'
+import { OrcaRuntimeWithTerminalClientUse } from '../terminal/lifecycle/runtime-terminal-client-use'
 import type { FolderWorkspace } from '../../../shared/folder-workspaces/folder-workspace-types'
 import type { ResolvedWorktree } from '../workspaces/catalog/runtime-worktree-path-identity'
-import {
-  confirmRunTerminalShellAlone,
-  readRunTerminalClientUse
-} from '../terminal/lifecycle/run-terminal-client-use'
 import { ALL_EXECUTION_HOSTS_SCOPE, type ExecutionHostId } from '../../../shared/execution-host'
+import { createRuntimeAgentAccountPreferenceValidationPorts } from '../agent-session/environment/agent-account-preference-validation'
 import { RuntimePreservedBranchCleanup } from '../repositories/runtime-preserved-branch-cleanup'
 import type { AgentSessionCreateOperation } from '../session-construction/agent-session/agent-session-create-operation'
 import type * as CompatibilityAuthority from '../orchestration/terminal-authority/orchestration-compatibility-authority'
@@ -40,10 +37,10 @@ import { RuntimeRepositoryForkBackfill } from '../repositories/runtime-repositor
 import { RuntimeWorkspaceSessionController } from '../workspaces/session-hosts/runtime-workspace-session-controller'
 import { RuntimeAiVaultCommands } from '../integrations/ai-vault/runtime-ai-vault-commands'
 import { ClaudeAgentTeamsService } from '../terminal/agent-teams/claude-agent-teams-service'
-import { teardownFolderWorkspacePtys } from '../workspaces/removal/folder-workspace-pty-teardown'
+import { createFolderWorkspacePtyTeardown } from '../workspaces/removal/folder-workspace-pty-teardown'
 import { countRepoTerminalsNotKnownExited } from '../workspaces/removal/project-removal-impact'
 
-export abstract class OrcaRuntimeWithPreservedBranchCleanup extends OrcaRuntimeWithTerminalDrivers {
+export abstract class OrcaRuntimeWithPreservedBranchCleanup extends OrcaRuntimeWithTerminalClientUse {
   declare acquireFileWatcherRemoval: ConstructorParameters<
     typeof RuntimeProjectGroupController
   >[0]['acquireFileWatcherRemoval']
@@ -120,14 +117,6 @@ export abstract class OrcaRuntimeWithPreservedBranchCleanup extends OrcaRuntimeW
   protected readonly getAgentProviderSessionRowsForPaneFn!:
     | HostBindings['getAgentProviderSessionRowsForPane']
     | null
-
-  readTerminalClientUse(ptyId: string): 'used' | 'unused' | 'unknown' {
-    return readRunTerminalClientUse(this, ptyId)
-  }
-
-  confirmTerminalShellAlone(ptyId: string): Promise<boolean> {
-    return confirmRunTerminalShellAlone(this.ptyController, ptyId)
-  }
 
   /** Includes resume-identity-only provider rows. */
   getAgentProviderSessionRows(tabId?: string): AgentStatusIpcPayload[] {
@@ -268,6 +257,13 @@ export abstract class OrcaRuntimeWithPreservedBranchCleanup extends OrcaRuntimeW
 
   protected readonly accounts = new RuntimeAccountController(() => this.notifier)
 
+  private readonly agentAccountPreferenceValidation =
+    createRuntimeAgentAccountPreferenceValidationPorts({
+      accounts: this.accounts,
+      getStore: () => this.requireStore(),
+      resolveFolderConnectionId: (workspace) => this.resolveFolderWorkspaceConnectionId(workspace)
+    })
+
   protected readonly mobileSpeech = new RuntimeMobileSpeechCatalog(() => this.store)
 
   protected readonly mobileDictation = new RuntimeMobileDictationController(() => this.store)
@@ -286,7 +282,8 @@ export abstract class OrcaRuntimeWithPreservedBranchCleanup extends OrcaRuntimeW
     countLiveTerminalsForRepo: (repo) =>
       countRepoTerminalsNotKnownExited(repo, this.ptysById.values(), (ptyId) =>
         this.isPtyKnownExited(ptyId)
-      )
+      ),
+    ...this.agentAccountPreferenceValidation.projectHostSetup
   })
 
   protected readonly projectGroups = new RuntimeProjectGroupController({
@@ -294,17 +291,14 @@ export abstract class OrcaRuntimeWithPreservedBranchCleanup extends OrcaRuntimeW
     resolveRepo: (...args) => this.managedWorktreeQueries.resolveRepoForConnection(...args),
     notifyReposChanged: () => this.notifyReposChanged(),
     resolveFolderConnectionId: (workspace) => this.resolveFolderWorkspaceConnectionId(workspace),
+    ...this.agentAccountPreferenceValidation.folderWorkspace,
     acquireFileWatcherRemoval: (path, connectionId) =>
       this.acquireFileWatcherRemoval(path, connectionId),
-    teardownFolderWorkspacePtys: (...target) =>
-      teardownFolderWorkspacePtys(
-        {
-          runtime: this,
-          getLocalProvider: () => this.getLocalProvider(),
-          onPtyStopped: this.onPtyStopped
-        },
-        ...target
-      ),
+    teardownFolderWorkspacePtys: createFolderWorkspacePtyTeardown(
+      this,
+      () => this.getLocalProvider(),
+      this.onPtyStopped
+    ),
     cleanupRemovedFolderWorkspaceState: (worktreeId): void | Promise<void> => {
       // Retire runs after the awaited store cleanup, so the delete cannot
       // report before the Codex pretrust purge lands; failures degrade here.

@@ -1,6 +1,8 @@
 import type { WorkspaceAttachmentMutation } from '../../../shared/workspace-attachments/workspace-attachment-mutation'
 import { refuseWslHostWindowsDrivePath } from '../terminal/launch/wsl-host-windows-drive-guard'
 import type { FolderWorkspace } from '../../../shared/folder-workspaces/folder-workspace-types'
+import type { AgentAccountPreferencePatch } from '../../../shared/agent-accounts/agent-account-preference'
+import { getConnectionExecutionHostId } from '../../../shared/execution-host'
 import type {
   ProjectGroup,
   ProjectGroupMutation,
@@ -42,6 +44,11 @@ export type RuntimeProjectGroupDependencies = {
   resolveRepo: (selector: string, connectionId?: string | null) => Promise<Repo>
   notifyReposChanged: () => void
   resolveFolderConnectionId: (workspace: FolderWorkspace) => string | null
+  validateAgentAccountPreferencePatch?: (
+    patch: AgentAccountPreferencePatch,
+    workspace: FolderWorkspace,
+    hostId: string
+  ) => Promise<void>
   teardownFolderWorkspacePtys: (worktreeId: string, connectionId: string | null) => Promise<void>
   acquireFileWatcherRemoval: (
     path: string,
@@ -71,7 +78,7 @@ type FolderWorkspaceUpdates = Partial<
     | 'firstAgentMessageRenameError'
     | 'lastActivityAt'
     | 'diffComments'
-  >
+  > & { agentAccounts?: AgentAccountPreferencePatch }
 > &
   WorkspaceAttachmentMutation
 
@@ -246,6 +253,16 @@ export class RuntimeProjectGroupController {
     }
     assertUniqueIdWhenRequired(store, folderWorkspaceId, options)
     const existing = store.getFolderWorkspaces?.().find((entry) => entry.id === folderWorkspaceId)
+    if (
+      existing &&
+      updates.agentAccounts &&
+      Object.values(updates.agentAccounts).some((value) => value !== null && value !== undefined)
+    ) {
+      const hostId =
+        existing.executionHostId ??
+        getConnectionExecutionHostId(this.deps.resolveFolderConnectionId(existing))
+      await this.deps.validateAgentAccountPreferencePatch?.(updates.agentAccounts, existing, hostId)
+    }
     if (
       existing &&
       isLocalWslMoveRow(existing) &&

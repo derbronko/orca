@@ -5,6 +5,7 @@ import type { DiffComment } from '../diff-comment-types'
 import type { SmartTier } from '../sidebar-list/sorting/sort-stamps'
 import type { OrcadRetainedMarker } from '../orcad-retained-marker'
 import type { ExternalConversationLink } from '../external-conversation-link'
+import type { AgentAccountPreferences } from '../agent-accounts/agent-account-preference'
 import type {
   WorkspaceCreatorProvenance,
   WorkspaceLinkedItem,
@@ -14,6 +15,8 @@ import type {
 
 export type FolderWorkspace = {
   id: string
+  /** Account defaults scoped to this folder workspace instance. */
+  agentAccounts?: AgentAccountPreferences
   projectGroupId: string
   name: string
   folderPath: string

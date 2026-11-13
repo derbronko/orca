@@ -37,6 +37,7 @@ export type BuildPtyHostEnvOptions = {
 }
 
 export type CodexHomeLaunchContext = {
+  accountId?: string
   unavailableManagedHomePath?: string
   launchesCodex?: boolean
 }
@@ -53,6 +54,7 @@ export type PrepareCodexSessionResume = (args: {
   target: CodexAccountSelectionTarget
   launchEnv?: NodeJS.ProcessEnv
   useSelectedAccount?: boolean
+  accountId?: string
 }) => Promise<CodexSessionResumePreparation | null>
 
 export type CodexHomePtySpawnedLifecycleArgs = {
@@ -72,5 +74,6 @@ export function allocatePtyLifecycleSequence(): number {
 }
 
 export type PrepareClaudeAuth = (
-  target?: ClaudeAccountSelectionTarget
+  target?: ClaudeAccountSelectionTarget,
+  options?: { accountId?: string }
 ) => Promise<ClaudeRuntimeAuthPreparation>

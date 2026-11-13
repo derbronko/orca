@@ -9,6 +9,7 @@ import {
   withoutInheritedClaudeConfigDir
 } from '../../../claude/structured/launch/claude-config-dir-pin'
 import { resolveClaudeStructuredLaunchHome } from '../../../claude/structured/launch/claude-structured-launch-home'
+import { prepareClaudeLaunchAccount } from '../../../claude/structured/launch/claude-launch-account'
 import type { CommitMessageGenerationTarget } from '../../../text-generation/source-control-text-generation-types'
 
 /** Default naming follows the native account binding; explicit recipes retain CLI routing. */
@@ -36,7 +37,10 @@ export async function chatNamingAgentTarget(
       resolveTuiAgentLaunchEnv('claude', settings),
       process.platform
     )
-    const path = await resolveClaudeStructuredLaunchHome(getClaudeProfileRouter(), env, home.path)
+    const router = getClaudeProfileRouter()
+    const path = record.accountBinding
+      ? (await prepareClaudeLaunchAccount(router, env, home.path, record.accountBinding)).home
+      : await resolveClaudeStructuredLaunchHome(router, env, home.path)
     const patch = claudeConfigDirEnvPatch(path, { env })
     return { kind: 'local', cwd, env: { CLAUDE_CONFIG_DIR: undefined, ...env, ...patch } }
   }

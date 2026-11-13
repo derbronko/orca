@@ -1,4 +1,21 @@
 {
+  "agentAccounts": {
+    "menuTitle": "Agentenkonten…",
+    "assignedTo": "Zugewiesenes Konto: {{value0}}",
+    "inheritProject": "Projektkonto übernehmen: {{value0}}",
+    "inheritGlobal": "Globale Auswahl übernehmen",
+    "unavailableAccount": "Konto nicht verfügbar ({{value0}})",
+    "loading": "Verwaltete Konten werden geladen…",
+    "localOnly": "Kontozuweisungen sind nur auf dem lokalen Host verfügbar.",
+    "projectDescription": "Wähle verwaltete Konten für neue Sitzungen in diesem Projekt auf dem ausgewählten Host.",
+    "projectTitle": "Agentenkonten",
+    "saveFailed": "Die Kontoeinstellung konnte nicht gespeichert werden.",
+    "saveNotApplied": "Der Host hat diese Kontoeinstellung nicht übernommen.",
+    "staleAccount": "Dieses verwaltete Konto ist nicht mehr verfügbar.",
+    "wslUnsupported": "Kontozuweisungen für WSL sind noch nicht verfügbar.",
+    "workspaceDescription": "Wähle verwaltete Konten für neue Sitzungen in {{value0}}. Bestehende Sitzungen behalten ihr gespeichertes Konto.",
+    "workspaceTitle": "Agentenkonten"
+  },
   "agentLaunch": {
     "connectSsh": "Verbinde dich mit dem SSH-Host dieses Arbeitsbereichs und versuche es erneut.",
     "sshUnavailable": "Der Terminalstart ist auf diesem SSH-Host nicht verfügbar. Öffne ein Terminal im Arbeitsbereich und starte den Agenten dort.",
@@ -21685,6 +21702,7 @@
   "common": {
     "retry": "Erneut versuchen",
     "cancel": "Abbrechen",
+    "close": "Schließen",
     "delete": "Löschen"
   },
   "terminal": {

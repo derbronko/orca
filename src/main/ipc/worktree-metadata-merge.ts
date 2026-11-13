@@ -41,6 +41,7 @@ export function mergeWorktree(
     ...(meta?.projectHostSetupId !== undefined
       ? { projectHostSetupId: meta.projectHostSetupId }
       : {}),
+    ...(meta?.agentAccounts !== undefined ? { agentAccounts: meta.agentAccounts } : {}),
     ...(meta?.ephemeralVmCheckoutMode !== undefined
       ? { ephemeralVmCheckoutMode: meta.ephemeralVmCheckoutMode }
       : {}),

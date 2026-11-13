@@ -1,5 +1,6 @@
 import type { WslHostWindowsDriveRefusal } from '../../../../shared/wsl-host-windows-drive-refusal'
 import type { WorkspaceAttachmentMutation } from '../../../../shared/workspace-attachments/workspace-attachment-mutation'
+import type { AgentAccountPreferencePatch } from '../../../../shared/agent-accounts/agent-account-preference'
 import type { GhAccountBinding } from '../../../../shared/github/accounts/account-binding'
 import type { SshRepoReadoption } from '../../../../shared/ssh-types'
 import type { FolderWorkspace } from '../../../../shared/folder-workspaces/folder-workspace-types'
@@ -73,29 +74,32 @@ export type RepoUpdate = Partial<
 
 export type ProjectUpdate = ProjectUpdateArgs['updates']
 
-export type FolderWorkspaceUpdates = Partial<
-  Pick<
-    FolderWorkspace,
-    | 'name'
-    | 'folderPath'
-    | 'linkedTask'
-    | 'linkedItems'
-    | 'linkedTaskSourceContext'
-    | 'comment'
-    | 'isArchived'
-    | 'isUnread'
-    | 'isPinned'
-    | 'sortOrder'
-    | 'manualOrder'
-    | 'workspaceStatus'
-    | 'createdWithAgent'
-    | 'pendingFirstAgentMessageRename'
-    | 'firstAgentMessageRenameError'
-    | 'lastActivityAt'
-    | 'diffComments'
-  >
-> &
-  WorkspaceAttachmentMutation
+export type FolderWorkspaceUpdates = Omit<
+  Partial<
+    Pick<
+      FolderWorkspace,
+      | 'name'
+      | 'folderPath'
+      | 'linkedTask'
+      | 'linkedItems'
+      | 'linkedTaskSourceContext'
+      | 'comment'
+      | 'isArchived'
+      | 'isUnread'
+      | 'isPinned'
+      | 'sortOrder'
+      | 'manualOrder'
+      | 'workspaceStatus'
+      | 'createdWithAgent'
+      | 'pendingFirstAgentMessageRename'
+      | 'firstAgentMessageRenameError'
+      | 'lastActivityAt'
+      | 'diffComments'
+      | 'agentAccounts'
+    >
+  >,
+  'agentAccounts'
+> & { agentAccounts?: AgentAccountPreferencePatch } & WorkspaceAttachmentMutation
 
 export type NestedRepoScanControls = {
   scanId?: string

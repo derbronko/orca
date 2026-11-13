@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '@/store'
 
 import type { Worktree } from '../../../../../../shared/worktree/types'
-import type { WorktreeMeta } from '../../../../../../shared/worktree/meta-types'
+import type { WorktreeMetaUpdate } from '../../../../../../shared/worktree/meta-types'
 import type { WorktreeMetaUpdateOptions } from '@/store/slices/worktrees/metadata/worktree-meta-update-options'
 
 vi.mock('@/components/ui/tooltip', () => ({
@@ -47,7 +47,7 @@ const updateWorktreeMeta =
   vi.fn<
     (
       id: string,
-      updates: Partial<WorktreeMeta>,
+      updates: WorktreeMetaUpdate,
       options?: WorktreeMetaUpdateOptions
     ) => Promise<{ ok: true } | { ok: false; error: string }>
   >()

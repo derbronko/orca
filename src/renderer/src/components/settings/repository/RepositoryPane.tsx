@@ -1,16 +1,9 @@
-import type { GhAccountBinding } from '../../../../../shared/github/accounts/account-binding'
 import { useCallback, useRef, useState } from 'react'
-import type { OrcaHooks, RepoHookSettings } from '../../../../../shared/orca-yaml-hook-types'
-import type {
-  Project,
-  ProjectHostSetup,
-  ProjectUpdateArgs
-} from '../../../../../shared/project-types'
-import type { Repo } from '../../../../../shared/repo-types'
-import type { SourceControlAiSettingsPatch } from '../../../../../shared/source-control/ai/settings/source-control-ai-settings-types'
+import type { RepoHookSettings } from '../../../../../shared/orca-yaml-hook-types'
+import type { ProjectHostSetup } from '../../../../../shared/project-types'
 import { getRepoKindLabel, isFolderRepo } from '../../../../../shared/repo-kind'
 import { useFolderSetupSupport } from '@/lib/workspace/creation/setup/folder-setup-support'
-import { getRepoExecutionHostId, type ExecutionHostId } from '../../../../../shared/execution-host'
+import { getRepoExecutionHostId } from '../../../../../shared/execution-host'
 import { Label } from '../../ui/label'
 import { useShallow } from 'zustand/react/shallow'
 import { RepositoryHooksSection } from './hooks/RepositoryHooksSection'
@@ -22,7 +15,6 @@ import { SearchableSetting } from '../section-layout/SearchableSetting'
 import { SettingsGroup } from '../section-layout/SettingsGroup'
 import { RepositorySidebarVisibilitySection } from './RepositorySidebarVisibilitySection'
 import { RepositoryRemoveProjectSection } from './RepositoryRemoveProjectSection'
-import type { SettingsProjectRemovalScope } from '../navigation/settings-project-list'
 import { matchesSettingsSearch } from '../search/settings-search'
 import { useAppStore } from '@/store/index'
 import { getRepositoryIconSectionId } from './repository-settings-targets'
@@ -33,6 +25,7 @@ import { RepoSettingsDraftInput } from './RepositorySettingsDraftInput'
 import { RepositoryForkSyncSection } from './source-control/RepositoryForkSyncSection'
 import { RepositoryAgentTrustSection } from './RepositoryAgentTrustSection'
 import { RepositoryGitHubAccountSection } from './source-control/RepositoryGitHubAccountSection'
+import { RepositoryPaneAgentAccountsSection } from './RepositoryPaneAgentAccountsSection'
 import { useTranslate } from '@/i18n/use-translate'
 import { RepositoryWindowsRuntimeSection } from './runtime/RepositoryWindowsRuntimeSection'
 import { matchesRepositoryIdentitySearch } from './identity/repository-identity-search'
@@ -44,49 +37,10 @@ import {
   RepositoryFormatterSection,
   getRepositoryFormatterSearchEntry
 } from './RepositoryFormatterSection'
-
-type RepositoryPaneRepoUpdate = Omit<
-  Partial<Repo>,
-  'sourceControlAi' | 'externalWorktreeVisibility' | 'ghAccount'
-> & {
-  sourceControlAi?: Repo['sourceControlAi'] | null
-  externalWorktreeVisibility?: Repo['externalWorktreeVisibility'] | null
-  ghAccount?: GhAccountBinding | null
-}
+import type { RepositoryPaneProps, RepositoryPaneRepoUpdate } from './repository-pane-types'
 
 const EMPTY_WSL_DISTROS: string[] = []
 const EMPTY_REMOVAL_SETUPS: ProjectHostSetup[] = []
-
-type RepositoryPaneProps = {
-  repo: Repo
-  yamlHooks: OrcaHooks | null
-  hasHooksFile: boolean
-  hooksInspectionReady: boolean
-  mayNeedUpdate: boolean
-  updateRepo: (
-    repoId: string,
-    updates: RepositoryPaneRepoUpdate,
-    options?: { hostId?: ExecutionHostId }
-  ) => void | Promise<boolean>
-  removeProject: () => void
-  project?: Project | null
-  selectedProjectSetupId?: string
-  settingsSelectionKey?: string
-  settingsEntryRepoIds?: ReadonlySet<string>
-  removalScope?: SettingsProjectRemovalScope
-  /** Every checkout the remove action takes out of Orca. */
-  removalSetups?: readonly ProjectHostSetup[]
-  isLocalWindowsProject?: boolean
-  wslAvailable?: boolean
-  wslDistros?: string[]
-  wslCapabilitiesLoading?: boolean
-  updateProject?: (
-    projectId: string,
-    updates: ProjectUpdateArgs['updates']
-  ) => void | Promise<unknown>
-  /** Lets the repository's text pickers save model lists its host reports. */
-  writeSourceControlAiSettings?: (patch: SourceControlAiSettingsPatch) => Promise<void>
-}
 
 export function RepositoryPane({
   repo,
@@ -338,6 +292,13 @@ export function RepositoryPane({
             <RepositoryGitHubAccountSection
               repo={repo}
               updateRepo={updateSelectedRepo}
+              forceVisible={forceFullPaneForRepoMatch}
+            />
+
+            <RepositoryPaneAgentAccountsSection
+              repo={repo}
+              selectedProjectSetupId={selectedProjectSetupId}
+              isLocalWindowsProject={isLocalWindowsProject}
               forceVisible={forceFullPaneForRepoMatch}
             />
 

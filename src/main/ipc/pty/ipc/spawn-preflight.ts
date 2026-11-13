@@ -11,6 +11,12 @@ import { resolvePtySpawnStartupTarget } from '../spawn-startup-target'
 import type { PtyIpcSpawnState } from './spawn-state'
 import { localPtySpawnCwd } from '../host-env/spawn-cwd'
 import { getConnectionExecutionHostId } from '../../../../shared/execution-host'
+import { isRestoreSpawnIntent } from '../../../../shared/terminal/pty/admission/spawn-admission-contract'
+import {
+  resolvePtyAgentAccountBinding,
+  stripPtyClaudeAuthForAccountBinding,
+  withPtyAccountBinding
+} from '../host-env/pty-agent-account-binding'
 
 export async function preparePtyIpcSpawnPreflight(ctx: PtyIpcSpawnState): Promise<void> {
   const args = ctx.args
@@ -82,7 +88,10 @@ export async function preparePtyIpcSpawnPreflight(ctx: PtyIpcSpawnState): Promis
       }
     }
   }
-  ctx.isClaudeLaunch = !ctx.preAdoptedStablePane && isClaudeLaunchCommand(args.command)
+  ctx.isClaudeLaunch =
+    !ctx.preAdoptedStablePane &&
+    (args.launchAgent === 'claude' ||
+      isClaudeLaunchCommand(args.command ?? args.launchConfig?.agentCommand))
   // Stable caller IDs preserve reconnect state; failure cleanup must remove only IDs minted by this request.
   const target = await resolvePtySpawnStartupTarget({
     worktreeId: args.worktreeId,
@@ -116,10 +125,52 @@ export async function preparePtyIpcSpawnPreflight(ctx: PtyIpcSpawnState): Promis
   ctx.wslHoldReadAnchor = target.wslHoldReadAnchor
   ctx.codexSelectionTarget = target.codexSelectionTarget
   ctx.spawnTiming.mark('preflight')
-  args.env = withClaudeProfileTerminalEnv(args.env, ctx.codexSelectionTarget)
+  const requestedProvider =
+    args.launchAgent === 'claude' || ctx.isClaudeLaunch
+      ? 'claude'
+      : args.launchAgent === 'codex'
+        ? 'codex'
+        : undefined
+  const accountBinding = resolvePtyAgentAccountBinding({
+    provider: requestedProvider,
+    launchConfig: args.launchConfig,
+    workspaceId: args.worktreeId,
+    executionHostId: getConnectionExecutionHostId(args.connectionId),
+    target: ctx.codexSelectionTarget,
+    store: ctx.deps.store,
+    allowWorkspacePreference:
+      !ctx.preAdoptedStablePane &&
+      !args.attachOnlyView &&
+      args.resumeOrigin !== 'saved' &&
+      !args.resumeProviderSession &&
+      !isRestoreSpawnIntent(args.spawnIntent) &&
+      args.sessionId === undefined
+  })
+  if (accountBinding && args.launchAgent && accountBinding.provider !== args.launchAgent) {
+    throw new Error(`This pane is bound to a ${accountBinding.provider} account.`)
+  }
+  if (accountBinding) {
+    args.launchConfig = withPtyAccountBinding(args.launchConfig, args.command, accountBinding)
+  }
+  args.env =
+    accountBinding?.provider === 'claude'
+      ? stripPtyClaudeAuthForAccountBinding(args.env)
+      : withClaudeProfileTerminalEnv(args.env, ctx.codexSelectionTarget)
   ctx.claudeAuth =
-    ctx.isClaudeLaunch && ctx.deps.prepareClaudeAuth
-      ? await ctx.deps.prepareClaudeAuth(ctx.codexSelectionTarget)
-      : null
+    accountBinding?.provider === 'claude' && ctx.deps.prepareClaudeAuth
+      ? await ctx.deps.prepareClaudeAuth(ctx.codexSelectionTarget, {
+          accountId: accountBinding.accountId
+        })
+      : ctx.isClaudeLaunch && ctx.deps.prepareClaudeAuth
+        ? await ctx.deps.prepareClaudeAuth(ctx.codexSelectionTarget)
+        : null
+  if (
+    accountBinding?.provider === 'claude' &&
+    (!ctx.claudeAuth ||
+      ctx.claudeAuth.provenance !== `profile:${accountBinding.accountId}` ||
+      ctx.claudeAuth.envPatch.CLAUDE_CONFIG_DIR !== ctx.claudeAuth.configDir)
+  ) {
+    throw new Error('The assigned Claude account could not be prepared for this launch.')
+  }
   ctx.spawnTiming.mark('auth')
 }

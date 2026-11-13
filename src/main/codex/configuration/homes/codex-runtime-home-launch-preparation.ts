@@ -1,7 +1,6 @@
 import type { CodexHomeLaunchContext } from '../../../ipc/pty/host-env/types'
 import type { CodexAccountSelectionTarget } from '../../../../shared/codex-selection-lane'
 import type { CodexRuntimeHomeService } from '../../../codex-accounts/runtime-home-service'
-import type { GlobalSettings } from '../../../../shared/global-settings-types'
 import { codexHookService } from '../../hooks/installation/hook-service'
 import { getDefaultWslDistro } from '../../../wsl/discovery/distro-catalog'
 import { isAgentStatusHooksEnabledForAgent } from '../../../../shared/agent-hook-listener/configuration/agent-status-hooks-setting'
@@ -10,7 +9,7 @@ import { grantCodexSandboxReadOnManagedHome } from './codex-windows-sandbox-read
 
 export function createCodexRuntimeHomeLaunchPreparation(deps: {
   getRuntimeHome: () => Pick<CodexRuntimeHomeService, 'prepareForCodexLaunchAsync'> | null
-  getSettings: () => GlobalSettings | undefined
+  getSettings: () => Parameters<typeof isAgentStatusHooksEnabledForAgent>[0]
 }) {
   return async (
     target?: CodexAccountSelectionTarget,
@@ -23,7 +22,8 @@ export function createCodexRuntimeHomeLaunchPreparation(deps: {
     }
     // Propagate home failures: null selects the system account, which could launch the wrong identity (STA-4422).
     const runtimeHomePath = await runtimeHome.prepareForCodexLaunchAsync(target, launchEnv, {
-      unavailableManagedHomePath: launchContext?.unavailableManagedHomePath
+      unavailableManagedHomePath: launchContext?.unavailableManagedHomePath,
+      ...(launchContext?.accountId ? { accountId: launchContext.accountId } : {})
     })
     const launchesCodex = launchContext?.launchesCodex === true
     if (runtimeHomePath === null && target?.runtime !== 'wsl') {

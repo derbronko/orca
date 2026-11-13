@@ -2,7 +2,7 @@
 
 import { agentSessionRefusalError } from '../../../../shared/agent-session/failures/agent-session-wire-refusals'
 import type { AgentSessionAdmissionModels } from '../records/agent-session-record-options'
-import { chatAgentsShareConversations } from '../../../../shared/structured-agent-cli-conversation-adoption'
+import type { ManagedAgentAccountRef } from '../../../../shared/agent-accounts/agent-account-preference'
 import {
   agentSessionOperationKey,
   evaluateAgentSessionOperation,
@@ -19,15 +19,11 @@ import {
 } from '../../../../shared/agent-session/lifecycle/agent-session-lease-adjudication'
 import {
   agentSessionExecutionLocationsEqual,
-  isAgentSessionLaunchEnv,
-  isAgentSessionOptions,
   type AgentSessionExecutionLocation,
   type AgentSessionLaunchArgs,
   type AgentSessionLaunchEnv,
   type AgentSessionRecord
 } from '../../../../shared/agent-session/lifecycle/agent-session-record'
-import { isAgentSessionLaunchArgs } from '../../../../shared/agent-session/lifecycle/agent-session-launch-args'
-import { agentSessionProviderHandleRoot } from '../../../../shared/agent-session/lifecycle/agent-session-provider-handle-encoding'
 import type {
   StructuredAgentId,
   AgentSessionProviderHandleLink
@@ -37,7 +33,6 @@ import {
   type AgentSessionReservation
 } from './agent-session-lease-transitions'
 import {
-  listAgentSessionConversations,
   selectWritableAgentSessionRecord,
   requireWritableAgentSessionRecord,
   type AgentSessionStoreState
@@ -48,9 +43,19 @@ import {
   type AgentSessionAccountHome
 } from '../../../../shared/agent-session/lifecycle/agent-session-account-home'
 import { assertReservedTabUnheld } from '../agent-session-tab-table'
+import {
+  assertAdoptedConversationUnowned,
+  validateAgentSessionReservationInput
+} from './agent-session-reservation-guards'
+
+export {
+  assertAdoptedConversationUnowned,
+  validateAgentSessionReservationInput
+} from './agent-session-reservation-guards'
 
 export type AgentSessionReserveRequest = {
   forkedFrom?: AgentSessionRecord['forkedFrom']
+  accountBinding?: ManagedAgentAccountRef
   /** Host-resolved floating directory committed with the first owner reservation. */
   launchDirectory?: string
   sessionId: string
@@ -144,18 +149,6 @@ export function admitPendingAgentSessionReservationReplay(
   return record
 }
 
-export function validateAgentSessionReservationInput(request: AgentSessionReserveRequest): void {
-  if (request.launchEnv && !isAgentSessionLaunchEnv(request.launchEnv)) {
-    throw new Error('agent_session_launch_env_invalid')
-  }
-  if (request.launchArgs && !isAgentSessionLaunchArgs(request.launchArgs)) {
-    throw new Error('agent_session_launch_args_invalid')
-  }
-  if (request.options && !isAgentSessionOptions(request.options)) {
-    throw new Error('agent_session_options_invalid')
-  }
-}
-
 export function applyAgentSessionReservation(
   state: AgentSessionStoreState,
   request: AgentSessionReserveRequest,
@@ -216,40 +209,6 @@ export function applyAgentSessionReservation(
     probe: request.probe,
     reservation
   })
-}
-
-/** Refuse another record's current conversation, matching the pre-commit check.
- * Run inside the transaction: distinct adoption ids evade per-record CAS and providers may permit corrupting concurrent writers.
- * Self-exemption is not replay; the operation ledger resolves replay before this guard. */
-export function assertAdoptedConversationUnowned(
-  state: AgentSessionStoreState,
-  request: AgentSessionReserveRequest
-): void {
-  const adopted = request.adoptedHandleLink
-  if (!adopted) {
-    return
-  }
-  const root = agentSessionProviderHandleRoot(adopted.handle)
-  for (const record of listAgentSessionConversations(state)) {
-    if (record.sessionId === request.sessionId) {
-      continue
-    }
-    // Only the conversation a chat continues now: an earlier link no longer holds anything.
-    const head = record.providerHandleChain.at(-1)
-    const holdsSameConversation =
-      !!head &&
-      (agentSessionProviderHandleRoot(head.handle) === root ||
-        // One id from two chat agents that open the same conversations (`opencode`, `opencode2`).
-        (head.handle.transport === adopted.handle.transport &&
-          head.handle.nativeId === adopted.handle.nativeId &&
-          chatAgentsShareConversations(head.handle.agent, adopted.handle.agent)))
-    if (holdsSameConversation) {
-      throw agentSessionRefusalError('agent_session_conflict', {
-        reason: 'conversationHeldElsewhere',
-        owner: { sessionId: record.sessionId, workspaceId: record.location.workspaceId }
-      })
-    }
-  }
 }
 
 function createAgentSessionRecord(

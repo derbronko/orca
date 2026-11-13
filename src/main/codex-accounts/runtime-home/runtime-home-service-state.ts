@@ -43,7 +43,7 @@ export abstract class CodexRuntimeHomeState {
   abstract prepareForCodexLaunchAsync(
     target?: CodexAccountSelectionTarget,
     launchEnv?: NodeJS.ProcessEnv,
-    options?: { unavailableManagedHomePath?: string }
+    options?: { unavailableManagedHomePath?: string; accountId?: string }
   ): Promise<string | null>
   abstract beginHostSystemDefaultSessionMigrationLaunch(
     codexHomePath: string | null,

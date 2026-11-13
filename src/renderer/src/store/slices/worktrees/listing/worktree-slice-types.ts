@@ -6,7 +6,7 @@ import type {
   GitPushTarget,
   Worktree
 } from '../../../../../../shared/worktree/types'
-import type { WorktreeMeta } from '../../../../../../shared/worktree/meta-types'
+import type { WorktreeMetaUpdate } from '../../../../../../shared/worktree/meta-types'
 import type { ExecutionHostId } from '../../../../../../shared/execution-host'
 import type { DirectSshAuthority } from '../../../../../../shared/ssh-types'
 import type { HostQualifiedDetectedWorktreeResult } from '../../../../../../shared/detected-worktree-provider-contract'
@@ -87,7 +87,7 @@ export type WorktreeLineageUpdateResult = {
   updatedRemoteWorktree?: WorktreeWithLineage
 }
 
-export type RuntimeWorktreeMetaUpdates = Omit<Partial<WorktreeMeta>, 'pushTarget'> & {
+export type RuntimeWorktreeMetaUpdates = Omit<WorktreeMetaUpdate, 'pushTarget'> & {
   pushTarget?: GitPushTarget | null
 }
 

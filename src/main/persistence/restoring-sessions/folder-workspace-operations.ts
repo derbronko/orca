@@ -4,6 +4,8 @@ import type { FolderWorkspace } from '../../../shared/folder-workspaces/folder-w
 import type { PersistedState } from '../../../shared/persisted-state-types'
 import type { Repo } from '../../../shared/repo-types'
 import type { RepoHostTarget } from '../../../shared/repo-host-identity'
+import type { AgentAccountPreferencePatch } from '../../../shared/agent-accounts/agent-account-preference'
+import { mergeAgentAccountPreferencePatch } from '../../../shared/agent-accounts/agent-account-preference'
 import { getRepoExecutionHostId } from '../../../shared/execution-host'
 import { normalizeFolderWorkspaceName } from '../../../shared/folder-workspaces/folder-workspaces'
 import { getNextProjectGroupOrder } from '../../../shared/project-groups'
@@ -43,10 +45,6 @@ export class FolderWorkspacePersistenceOperations {
 
   private pruneMobileClientTabSelections(matchesWorktreeId: (worktreeId: string) => boolean): void {
     this.operations.pruneMobileClientTabSelections(matchesWorktreeId)
-  }
-
-  private hydrateRepo(repo: Repo): Repo {
-    return this.operations.hydrateRepo(repo)
   }
 
   getFolderWorkspaces(): FolderWorkspace[] {
@@ -153,8 +151,7 @@ export class FolderWorkspacePersistenceOperations {
         | 'diffComments'
         | 'externalConversations'
       >
-    > &
-      WorkspaceAttachmentMutation
+    > & { agentAccounts?: AgentAccountPreferencePatch } & WorkspaceAttachmentMutation
   ): FolderWorkspace | null {
     const workspace = this.getFolderWorkspace(id)
     if (!workspace) {
@@ -184,6 +181,12 @@ export class FolderWorkspacePersistenceOperations {
     }
     if (updates.name !== undefined) {
       workspace.name = normalizeFolderWorkspaceName(updates.name, workspace.name)
+    }
+    if (updates.agentAccounts !== undefined) {
+      workspace.agentAccounts = mergeAgentAccountPreferencePatch(
+        workspace.agentAccounts,
+        updates.agentAccounts
+      )
     }
     if (typeof updates.folderPath === 'string' && updates.folderPath.trim().length > 0) {
       const previous = workspace.folderPath
@@ -306,6 +309,6 @@ export class FolderWorkspacePersistenceOperations {
         ? order
         : getNextProjectGroupOrder(siblingRepos, normalizedGroupId)
     this.scheduleSave(['repos'])
-    return this.hydrateRepo(repo)
+    return this.operations.hydrateRepo(repo)
   }
 }

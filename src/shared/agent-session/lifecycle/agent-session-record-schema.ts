@@ -1,0 +1,2 @@
+export const AGENT_SESSION_RECORD_SCHEMA_VERSION = 2 as const
+export const AGENT_SESSION_BOUND_RECORD_SCHEMA_VERSION = 3 as const

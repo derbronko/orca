@@ -7,6 +7,8 @@ import { toRuntimeExecutionHostId } from '../../../../../shared/execution-host'
 import { agentProviderSessionForHostEnsure } from './agent-launch/agent-session-ensure-provider-session'
 import { translate } from '../../../i18n/i18n'
 import { agentResumeHostAuthorityCapability } from './agent-launch/agent-resume-host-authority-capability'
+import { runtimeEnvironmentSupportsCapability } from '../../rpc/compatibility/runtime-capability-proof'
+import { AGENT_SESSION_ACCOUNT_BINDING_RUNTIME_CAPABILITY } from '../../../../../shared/agent-session/agent-session-create-capabilities'
 import {
   createAgentSessionCreateOperation,
   withAgentSessionCreateOperationId
@@ -67,6 +69,16 @@ export async function createWebRuntimeSessionTerminalResult(
   }
   const intentOwner = captureWebSessionIntentOwner(environmentId)
   const callEnvironment = captureRuntimeEnvironmentCall(environmentId, intentOwner.pairingRevision)
+  const accountBinding = args.launchConfig?.accountBinding
+  if (
+    accountBinding &&
+    !(await runtimeEnvironmentSupportsCapability(
+      environmentId,
+      AGENT_SESSION_ACCOUNT_BINDING_RUNTIME_CAPABILITY
+    ))
+  ) {
+    throw new Error('agent_session_account_binding_unsupported')
+  }
 
   let workspaceSelectionRollback: WebRuntimeSessionWorkspaceSelectionRollback | null = null
   if (args.selectWorktree !== false) {
@@ -122,6 +134,7 @@ export async function createWebRuntimeSessionTerminalResult(
                         ...(args.launchConfig?.ompResumeFilePath
                           ? { ompResumeFilePath: args.launchConfig.ompResumeFilePath }
                           : {}),
+                        ...(accountBinding ? { accountBinding } : {}),
                         ...(agentArgsOverride !== undefined
                           ? { agentArgs: agentArgsOverride }
                           : {}),
@@ -148,6 +161,7 @@ export async function createWebRuntimeSessionTerminalResult(
                           ...agentSessionCreateRequest({
                             ...args,
                             agent,
+                            accountBinding,
                             agentArgs: args.agentArgs
                           }),
                           ...(args.cwd ? { startupCwd: args.cwd } : {}),

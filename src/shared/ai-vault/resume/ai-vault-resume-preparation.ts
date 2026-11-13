@@ -1,5 +1,6 @@
 import type { AiVaultAgent, AiVaultSession } from '../contracts/ai-vault-types'
 import { LOCAL_EXECUTION_HOST_ID } from '../../execution-host'
+import type { ManagedAgentAccountRef } from '../../agent-accounts/agent-account-preference'
 
 export type AiVaultConversationCopy = {
   sessionId: string
@@ -11,6 +12,8 @@ export type AiVaultPrepareSessionResumeArgs = Pick<
   'agent' | 'filePath' | 'codexHome' | 'executionHostId'
 > &
   Partial<Pick<AiVaultSession, 'sessionId'>> & {
+    /** Host-internal source-chat fork routing; the public RPC schema does not accept this field. */
+    accountBinding?: ManagedAgentAccountRef
     /** A fork only reads the conversation, so a native chat that owns it does not refuse it.
      *  Older hosts drop the field and refuse as for a resume. */
     fork?: boolean
@@ -21,7 +24,11 @@ export const AI_VAULT_CHAT_FORK_SOURCE_CAPABILITY = 'ai-vault.chat-fork-source.v
 export type AiVaultChatForkSource = Pick<
   AiVaultSession,
   'agent' | 'sessionId' | 'filePath' | 'cwd' | 'codexHome'
-> & { executionHostPlatform: NodeJS.Platform; sourceAgent: AiVaultAgent }
+> & {
+  executionHostPlatform: NodeJS.Platform
+  sourceAgent: AiVaultAgent
+  accountBinding?: ManagedAgentAccountRef
+}
 
 export type AiVaultPrepareChatForkArgs = {
   sourceChat: { sessionId: string; workspaceId: string }

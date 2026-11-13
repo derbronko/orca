@@ -17,6 +17,7 @@ import { DiffCommentSchema, MobileDiffReviewSchema } from '../../diff-comment-sc
 import { TaskSourceContextSchema } from '../../work-items/task-source-context-schema'
 import { isWorkspaceLinkedItemSourceContextMatch } from '../../workspace-attachments/workspace-linked-item-source-context'
 import { CrossStoreParentRefSchema } from './cross-store-parent-params'
+import { AgentAccountPreferencePatchSchema } from '../../agent-accounts/agent-account-preference'
 
 export const OptionalExecutionHostId = z
   .string()
@@ -161,6 +162,7 @@ export const WorktreeResolveCallerParent = z.object({
 export const WorktreeSet = WorktreeSelector.extend({
   // Empty clears to branch/folder fallback; OptionalString would drop remote clears and restore the old name.
   displayName: OptionalPlainString,
+  agentAccounts: AgentAccountPreferencePatchSchema.optional(),
   firstAgentMessageRenameError: z.null().optional(),
   // Preserve empty comment updates instead of coercing them to absent.
   comment: OptionalPlainString,

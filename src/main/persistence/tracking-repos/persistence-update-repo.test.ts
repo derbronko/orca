@@ -102,6 +102,82 @@ describe('Store', () => {
     ])
   })
 
+  it('retains provider preferences through repo-backed setup refresh and scopes them by host', async () => {
+    const store = await createStore()
+    store.addRepo(
+      makeRepo({
+        id: 'local',
+        path: '/local/orca',
+        upstream: { owner: 'acme', repo: 'orca' }
+      })
+    )
+    store.addRepo(
+      makeRepo({
+        id: 'remote',
+        path: '/remote/orca',
+        connectionId: 'gpu-vm',
+        upstream: { owner: 'acme', repo: 'orca' }
+      })
+    )
+
+    store.updateProjectHostSetup({
+      setupId: 'local',
+      hostId: 'local',
+      updates: { agentAccounts: { claude: { accountId: 'local-claude' } } }
+    })
+    store.updateProjectHostSetup({
+      setupId: 'remote',
+      hostId: 'ssh:gpu-vm',
+      updates: { agentAccounts: { codex: { accountId: 'remote-codex' } } }
+    })
+    store.updateProjectHostSetup({
+      setupId: 'local',
+      hostId: 'local',
+      updates: { agentAccounts: { codex: { accountId: 'local-codex' } } }
+    })
+
+    const refreshed = store.updateRepo(
+      { id: 'local', executionHostId: 'local' },
+      { displayName: 'Renamed' }
+    )
+    expect(refreshed?.agentAccounts).toEqual({
+      claude: { accountId: 'local-claude' },
+      codex: { accountId: 'local-codex' }
+    })
+    expect(store.getProjectHostSetups()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'local',
+          hostId: 'local',
+          agentAccounts: {
+            claude: { accountId: 'local-claude' },
+            codex: { accountId: 'local-codex' }
+          }
+        }),
+        expect.objectContaining({
+          id: 'remote',
+          hostId: 'ssh:gpu-vm',
+          agentAccounts: { codex: { accountId: 'remote-codex' } }
+        })
+      ])
+    )
+
+    store.updateProjectHostSetup({
+      setupId: 'local',
+      hostId: 'local',
+      updates: { agentAccounts: { claude: null } }
+    })
+    expect(store.getProjectHostSetups()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'local',
+          hostId: 'local',
+          agentAccounts: { codex: { accountId: 'local-codex' } }
+        })
+      ])
+    )
+  })
+
   it("revokes a repo's local Git catalog route as soon as its registration is removed", async () => {
     const store = await createStore()
     store.addRepo(makeRepo({ id: 'r1', path: '/local/repo' }))
@@ -153,7 +229,8 @@ describe('Store', () => {
       hostId: 'runtime:gpu-vm',
       repoId: '',
       path: '/srv/cloud-project',
-      displayName: 'GPU VM'
+      displayName: 'GPU VM',
+      agentAccounts: { claude: { accountId: 'cloud-claude' } }
     })
     writeDataFile({
       ...getDefaultPersistedState(testState.dir),
@@ -163,13 +240,29 @@ describe('Store', () => {
     })
     const store = await createStore()
 
+    store.updateProjectHostSetup({
+      setupId: independentSetup.id,
+      hostId: independentSetup.hostId,
+      updates: { agentAccounts: { codex: { accountId: 'cloud-codex' } } }
+    })
     store.updateRepo({ id: 'r1' }, { displayName: 'renamed' })
     store.reorderRepos(['r1'])
 
     expect(store.getProjects().map((project) => project.id)).toEqual(['repo:r1', 'cloud-project'])
     expect(store.getProjectHostSetups()).toEqual([
       expect.objectContaining({ id: 'r1', displayName: 'renamed' }),
-      independentSetup
+      expect.objectContaining({
+        id: independentSetup.id,
+        projectId: independentSetup.projectId,
+        hostId: independentSetup.hostId,
+        repoId: independentSetup.repoId,
+        path: independentSetup.path,
+        displayName: independentSetup.displayName,
+        agentAccounts: {
+          claude: { accountId: 'cloud-claude' },
+          codex: { accountId: 'cloud-codex' }
+        }
+      })
     ])
   })
 

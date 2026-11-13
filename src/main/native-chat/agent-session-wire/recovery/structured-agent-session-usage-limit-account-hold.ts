@@ -98,7 +98,7 @@ export class UsageLimitAccountHolds {
     this.readings = new Map()
   }
 
-  /** Re-attributed each pass: the account a chat continues on follows the host's selection.
+  /** Re-attributed each pass: the account a chat continues on follows its binding or host selection.
    *  `hit` names the cut and the account it hit, when known. */
   async attribute(
     id: string,
@@ -114,8 +114,7 @@ export class UsageLimitAccountHolds {
     try {
       // WSL readings never reach this host, so a WSL launch keeps the cut's own reset.
       if (record && record.location.wslDistro === null) {
-        // Off WSL a launch home follows only the provider's selection, never the chat.
-        const target = JSON.stringify([witness, record.provider])
+        const target = JSON.stringify([witness, record.provider, record.accountBinding ?? null])
         let launch = this.launchHomes.get(target)
         if (!launch) {
           launch = (async () => (await host.launchAccountHome?.(record)) ?? null)()

@@ -8,6 +8,10 @@ import { AGENT_EFFORT_LEVEL } from '../agent-launch/choices/agent-effort-level'
 import { isValidTerminalTabId } from '../workspace-layout/terminal-surfaces/terminal-tab-id'
 import { normalizeMainAgentStatusField } from '../agent-status/contracts/agent-status-types'
 import { salvagingRecord } from '../zod-salvage'
+import {
+  isManagedAgentAccountRef,
+  type ManagedAgentAccountRef
+} from '../agent-accounts/agent-account-preference'
 
 const terminalTabIdSchema = z
   .string()
@@ -77,11 +81,21 @@ export const sleepingAgentLaunchConfigBaseSchema = z.object({
     .min(1)
     .max(32 * 1024)
     .refine((value) => !hasUnsafeLaunchEnvChars(value))
-    .optional()
+    .optional(),
+  accountBinding: z.custom<ManagedAgentAccountRef>(isManagedAgentAccountRef).optional()
 })
 
 export const sleepingAgentLaunchConfigSchema = z.preprocess((raw) => {
   const parsed = sleepingAgentLaunchConfigBaseSchema.safeParse(raw)
+  // A malformed explicit pin must not collapse into a legacy unbound resume.
+  if (
+    !parsed.success &&
+    typeof raw === 'object' &&
+    raw !== null &&
+    Object.hasOwn(raw, 'accountBinding')
+  ) {
+    return raw
+  }
   return parsed.success ? parsed.data : undefined
 }, sleepingAgentLaunchConfigBaseSchema.optional())
 
@@ -106,6 +120,15 @@ export const sleepingAgentSessionRecordSchema = z
     origin: z.enum(['worktree-sleep', 'quit', 'live']).optional(),
     restoreOnTabOpenOnly: z.boolean().optional()
   })
+  .refine(
+    (record) =>
+      !record.launchConfig?.accountBinding ||
+      record.launchConfig.accountBinding.provider === record.agent,
+    {
+      message: 'account binding provider must match agent',
+      path: ['launchConfig', 'accountBinding']
+    }
+  )
   .refine(
     (record) => getAgentResumeArgv(record.agent, record.providerSession) !== null,
     // Resume must use a supported provider key; Pi also requires its transcript path.

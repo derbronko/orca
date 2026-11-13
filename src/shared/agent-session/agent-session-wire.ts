@@ -29,6 +29,7 @@ import type { AgentSessionRecord } from './lifecycle/agent-session-record'
 import type { AgentProviderSessionMetadata } from './lifecycle/agent-session-resume'
 import type { NativeChatSubagentEntry } from '../native-chat/native-chat-types'
 import type { StructuredAgentSessionProjectedStatus } from './view/structured-agent-session-projection'
+import type { ManagedAgentAccountRef } from '../agent-accounts/agent-account-preference'
 
 export type AgentSessionTurnActivity = {
   turnId: string
@@ -191,6 +192,8 @@ export type AgentSessionSubscribeEvent =
 
 /** Host-projected list status avoids client transcript replay; older hosts lack this additive method. */
 export type AgentSessionStatusSummary = {
+  /** Account fixed for this session's launches; absent on older hosts and unassigned sessions. */
+  accountBinding?: ManagedAgentAccountRef
   usageLimitContinue?: AgentSessionUsageLimitContinue
   rewindBlockedReason?: AgentSessionRewindReason
   sessionId: string

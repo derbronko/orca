@@ -7,6 +7,7 @@ import {
 } from '@/runtime/native-chat/status/structured-agent-session-status-feed'
 import { structuredAgentSessionOptionStamp } from '../../../../../../shared/agent-session/options/structured-agent-session-option-state'
 import { runtimePermissionReport } from '../../../../../../shared/agent-session/options/structured-agent-session-permission-option'
+import type { ManagedAgentAccountRef } from '../../../../../../shared/agent-accounts/agent-account-preference'
 
 /** The host feed plus a subscription that wakes only for this chat's updates. */
 function useSessionFeed(
@@ -83,6 +84,19 @@ export function useStructuredAgentSessionHostProgram(
     subscribe,
     () => feed.getSnapshot().get(sessionId)?.hostProgram === true,
     () => false
+  )
+}
+
+/** The session's fixed launch account, as recorded by the host; never inferred from live selection. */
+export function useStructuredAgentSessionAccountBinding(
+  sessionId: string,
+  target: RuntimeClientTarget
+): ManagedAgentAccountRef | undefined {
+  const { feed, subscribe } = useSessionFeed(sessionId, target)
+  return useSyncExternalStore(
+    subscribe,
+    () => feed.getSnapshot().get(sessionId)?.accountBinding,
+    () => undefined
   )
 }
 

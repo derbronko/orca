@@ -10,6 +10,7 @@ import {
   useWorkspaceLineageMenuActions
 } from './workspace-lineage-menu-actions'
 import { parseWorkspaceKey } from '../../../../../../shared/workspace-scope'
+import { useWorktreeAgentAccountPreferenceTarget } from './use-worktree-agent-account-preference-target'
 import { getDeleteStateForWorktreeHost } from '../deletion/worktree-delete-state-host-match'
 import {
   EMPTY_AGENT_STATUS_BY_PANE_KEY,
@@ -68,6 +69,11 @@ export function useWorktreeContextMenuModel({
   const createProjectGroup = useAppStore((s) => s.createProjectGroup)
   const moveProjectToGroup = useAppStore((s) => s.moveProjectToGroup)
   const repo = useRepoById(worktree.repoId)
+  const {
+    executionHostId: workspaceExecutionHostId,
+    projectPreferences: projectAgentAccountPreferences,
+    wslUnsupported: workspaceUsesUnsupportedRuntime
+  } = useWorktreeAgentAccountPreferenceTarget(worktree, repo)
   const deleteState = useAppStore((s) =>
     getDeleteStateForWorktreeHost(worktree, s.deleteStateByWorktreeId)
   )
@@ -79,6 +85,7 @@ export function useWorktreeContextMenuModel({
     effectiveSelectedWorktrees
   )
   const [createGroupDialogOpen, setCreateGroupDialogOpen] = useState(false)
+  const [agentAccountsDialogOpen, setAgentAccountsDialogOpen] = useState(false)
   const createGroupDialogActiveRef = useRef(false)
   const [parentPicker, setParentPicker] = useState<PendingParentPicker | null>(null)
   const [parentPickerOpen, setParentPickerOpen] = useState(false)
@@ -331,6 +338,7 @@ export function useWorktreeContextMenuModel({
 
   return {
     ...commands,
+    agentAccountsDialogOpen,
     activeContextWorktrees,
     batchDeleteWorktrees,
     browserTabsByWorktree,
@@ -349,6 +357,7 @@ export function useWorktreeContextMenuModel({
     effectiveSelectedWorktrees,
     folderWorkspaceId,
     handleCloseAutoFocus,
+    handleOpenAgentAccountsDialog: () => setAgentAccountsDialogOpen(true),
     handleOpenParentPicker,
     handleParentPickerOpenChange,
     handleRemoveParentLink,
@@ -363,11 +372,13 @@ export function useWorktreeContextMenuModel({
     parentPicker,
     parentPickerOpen,
     projectGroups,
+    projectAgentAccountPreferences,
     ptyIdsByTabId,
     removesProject,
     repo,
     scopeRef,
     setContextWorktrees,
+    setAgentAccountsDialogOpen,
     setDeveloperMenuRevealed,
     setMenuOpenState,
     setMenuPoint,
@@ -376,9 +387,12 @@ export function useWorktreeContextMenuModel({
     subtreeSleepableWorktrees,
     suppressOpeningPointerEvent,
     tabsByWorktree,
+    updateWorktreeMeta,
     validParentWorktreeId,
     worktree,
-    workspaceStatuses
+    workspaceStatuses,
+    workspaceExecutionHostId,
+    workspaceUsesUnsupportedRuntime
   }
 }
 

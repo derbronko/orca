@@ -1,5 +1,7 @@
 import type { PersistedState } from '../../../shared/persisted-state-types'
 import type { Repo } from '../../../shared/repo-types'
+import type { AgentAccountPreferencePatch } from '../../../shared/agent-accounts/agent-account-preference'
+import { mergeAgentAccountPreferencePatch } from '../../../shared/agent-accounts/agent-account-preference'
 import { type ExecutionHostId, getRepoExecutionHostId } from '../../../shared/execution-host'
 import type { RepoHostTarget } from '../../../shared/repo-host-identity'
 
@@ -124,6 +126,7 @@ export class RepoUpdatePersistenceOperations {
       externalWorktreeDiscoverySuppressedAt?: Repo['externalWorktreeDiscoverySuppressedAt'] | null
       hiddenAt?: Repo['hiddenAt'] | null
       ghAccount?: GhAccountBinding | null
+      agentAccounts?: AgentAccountPreferencePatch
     }
   ): Repo | null {
     const repo = findRepoRowForHostScopedWrite(
@@ -137,6 +140,12 @@ export class RepoUpdatePersistenceOperations {
     assertKindChangeKeepsFolderWorkspaces(repo, updates.kind, this.state.worktreeMeta)
     const previousGhAccount = repo.ghAccount
     const sanitizedUpdates = sanitizeRepoUpdatesForPersistence(updates)
+    if (updates.agentAccounts !== undefined) {
+      sanitizedUpdates.agentAccounts = mergeAgentAccountPreferencePatch(
+        repo.agentAccounts,
+        updates.agentAccounts
+      )
+    }
     if (
       'executionHostId' in updates &&
       getRepoExecutionHostId({ ...repo, ...updates }) !== getRepoExecutionHostId(repo)

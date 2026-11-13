@@ -35,7 +35,7 @@ import type {
   SparsePreset
 } from '../../../shared/worktree/create-types'
 import type { WorkspaceLineage, WorktreeLineage } from '../../../shared/worktree/lineage-types'
-import type { WorktreeMeta } from '../../../shared/worktree/meta-types'
+import type { WorktreeMetaUpdate } from '../../../shared/worktree/meta-types'
 import type {
   DetectedWorktreeListResult,
   GitHubPrStartPoint,
@@ -133,7 +133,7 @@ export type WorktreeApi = {
   updateMeta: (args: {
     worktreeId: string
     executionHostId?: ExecutionHostId
-    updates: Partial<WorktreeMeta>
+    updates: WorktreeMetaUpdate
   }) => Promise<Worktree | null>
   listLineage: () => Promise<{
     lineage: Record<string, WorktreeLineage>

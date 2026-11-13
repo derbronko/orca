@@ -5,6 +5,7 @@ import {
   normalizeExecutionHostId,
   parseExecutionHostId
 } from '../../execution-host'
+import { AgentAccountPreferencePatchSchema } from '../../agent-accounts/agent-account-preference'
 
 export const ProjectProviderIdentity = z.object({
   provider: z.literal('github'),
@@ -88,7 +89,8 @@ export const ProjectHostSetupUpdate = z.object({
       .enum(['legacy-repo', 'imported-existing-folder', 'cloned', 'provisioned'])
       .optional(),
     gitUsername: OptionalString,
-    kind: z.enum(['git', 'folder']).optional()
+    kind: z.enum(['git', 'folder']).optional(),
+    agentAccounts: AgentAccountPreferencePatchSchema.optional()
   })
 })
 

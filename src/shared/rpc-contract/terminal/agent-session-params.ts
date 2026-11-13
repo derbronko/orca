@@ -14,6 +14,10 @@ import {
 import { isTuiAgent } from '../../agent-launch/catalog/tui-agent-config'
 import { RESTORE_SPAWN_INTENTS } from '../../terminal/pty/admission/spawn-admission-contract'
 import { AgentLaunchAccountEnv } from '../../agent-launch/startup/agent-launch-account-env'
+import {
+  isManagedAgentAccountRef,
+  type ManagedAgentAccountRef
+} from '../../agent-accounts/agent-account-preference'
 
 export const MAX_WORKTREE_SELECTOR_LENGTH = 32_768
 
@@ -74,6 +78,7 @@ export const PromptDelivery = z.enum(['auto-submit', 'draft'])
 
 /** Sent only to hosts advertising `terminal.spawn-intent.v1`; presence opts into deferral. */
 export const SpawnIntentParam = z.enum(RESTORE_SPAWN_INTENTS)
+const ManagedAgentAccountRefParam = z.custom<ManagedAgentAccountRef>(isManagedAgentAccountRef)
 
 export const AgentArgs = z
   .string()
@@ -145,7 +150,9 @@ export const ExplicitEnsure = z
     placement: Placement.optional(),
     spawnIntent: SpawnIntentParam.optional(),
     /** Sent only to hosts advertising `agent-session.account-env.v1`; outside replay identity. */
-    accountEnv: AgentLaunchAccountEnv.optional()
+    accountEnv: AgentLaunchAccountEnv.optional(),
+    /** Send only to hosts advertising `agent-session.account-binding.v1`. */
+    accountBinding: ManagedAgentAccountRefParam.optional()
   })
   .strict()
   .superRefine((value, context) => {
@@ -161,6 +168,13 @@ export const ExplicitEnsure = z
         code: z.ZodIssueCode.custom,
         path: ['providerSession'],
         message: 'Provider session is not resumable for this agent'
+      })
+    }
+    if (value.accountBinding && value.accountBinding.provider !== value.agent) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['accountBinding'],
+        message: 'Account binding provider must match agent'
       })
     }
   })
@@ -197,7 +211,9 @@ export const CreateAgentSessionParams: z.ZodType<RuntimeCreateAgentSessionReques
     placement: Placement.optional(),
     viewMode: z.enum(['terminal', 'chat']).optional(),
     /** Sent only to hosts advertising `agent-session.account-env.v1`; outside the fingerprint. */
-    accountEnv: AgentLaunchAccountEnv.optional()
+    accountEnv: AgentLaunchAccountEnv.optional(),
+    /** Send only to hosts advertising `agent-session.account-binding.v1`; included in create identity. */
+    accountBinding: ManagedAgentAccountRefParam.optional()
   })
   .strict()
   .superRefine((value, context) => {
@@ -206,6 +222,13 @@ export const CreateAgentSessionParams: z.ZodType<RuntimeCreateAgentSessionReques
         code: z.ZodIssueCode.custom,
         path: ['prompt'],
         message: 'Draft delivery requires a non-empty prompt'
+      })
+    }
+    if (value.accountBinding && value.accountBinding.provider !== value.agent) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['accountBinding'],
+        message: 'Account binding provider must match agent'
       })
     }
   })

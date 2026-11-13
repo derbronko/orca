@@ -36,6 +36,7 @@ export async function buildRuntimePtySpawnOptions(
   const deletions = assemblePtySpawnEnvDeletions({
     env: ctx.env,
     callerEnvToDelete: args.envToDelete,
+    accountBinding: args.launchConfig?.accountBinding,
     agentTeamsEnvToDelete: [],
     isDaemonHostSpawn: ctx.isDaemonHostSpawn,
     connectionId: args.connectionId,
