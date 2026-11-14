@@ -1,5 +1,6 @@
 import { type BrowserWindow, ipcMain } from 'electron'
 import type { Store } from '../../persistence/loading-store/store'
+import type { OrcaRuntimeService } from '../../runtime/orca-runtime'
 import type { Repo } from '../../../shared/repo-types'
 import type {
   ProjectHostSetupCreateArgs,
@@ -19,7 +20,6 @@ import {
 import { readCurrentGitRemoteIdentity } from '../../workspaces/catalog/repo-git-remote-identity'
 import { getRepoExecutionHostId, parseExecutionHostId } from '../../../shared/execution-host'
 import { prepareLocalWorktreeRootForRepo } from '../../workspaces/creation/worktree-root-preparation'
-import { updateProjectHostSetupWithProvenKind } from '../../workspaces/catalog/folder-repo-git-conversion'
 import { invalidateAuthorizedRootsCache } from '../worktrees/removal/registered-worktree-roots-cache'
 import { emitRepoAdded } from './repo-added-telemetry'
 import { notifyReposChanged } from './repos-changed-notification'
@@ -50,7 +50,8 @@ function buildProjectHostSetupResult(store: Store, repo: Repo): ProjectHostSetup
 export function registerProjectHostSetupHandlers(
   mainWindow: BrowserWindow,
   store: Store,
-  metadata: RepositoryMetadataOwner
+  metadata: RepositoryMetadataOwner,
+  runtime: Pick<OrcaRuntimeService, 'updateProjectHostSetup'>
 ): void {
   ipcMain.handle(
     'projectHostSetups:create',
@@ -79,23 +80,7 @@ export function registerProjectHostSetupHandlers(
         'project_host_setup_update_invalid_args'
       )
       assertWslMoveHostSetupIdWritable(store, args)
-      const result = await updateProjectHostSetupWithProvenKind(
-        store,
-        (setupArgs) => {
-          assertWslMoveHostSetupIdWritable(store, setupArgs)
-          return store.updateProjectHostSetup(setupArgs)
-        },
-        args
-      )
-      if (!result) {
-        throw new Error(`Project host setup not found: ${args.setupId}`)
-      }
-      if ('worktreeBasePath' in args.updates && result.repo) {
-        void prepareLocalWorktreeRootForRepo(store, result.repo)
-        invalidateAuthorizedRootsCache()
-      }
-      notifyReposChanged(mainWindow)
-      return result
+      return runtime.updateProjectHostSetup(args)
     }
   )
 

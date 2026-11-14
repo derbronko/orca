@@ -5,6 +5,7 @@ import type {
 import type { WorktreeBaseStatusEvent } from '../../../shared/worktree/base-refs/base-ref-drift-types'
 import { probeRuntimeWorktreeDrift } from './metadata/runtime-worktree-drift-probe'
 import type { WorktreeMeta } from '../../../shared/worktree/meta-types'
+import type { ExecutionHostId } from '../../../shared/execution-host'
 import type { AgentAccountPreferencePatch } from '../../../shared/agent-accounts/agent-account-preference'
 import { validateAgentAccountPreferencePatch } from '../agent-session/environment/agent-account-preference-validation'
 import type { GitPushTarget } from '../../../shared/worktree/types'
@@ -69,7 +70,8 @@ export abstract class RuntimeWorkspaceMetadata extends RuntimeWorktreeReviewBase
         crossStoreParent?: CrossStoreParentRef
         noParent?: boolean
       }
-    }
+    },
+    requiredHostId?: ExecutionHostId
   ) {
     if (!this.store) {
       throw new Error('runtime_unavailable')
@@ -79,7 +81,7 @@ export abstract class RuntimeWorkspaceMetadata extends RuntimeWorktreeReviewBase
       updates,
       store: this.store,
       ports: {
-        resolveWorktree: (selector) => this.resolveGitWorktreeSelector(selector),
+        resolveWorktree: (selector) => this.resolveGitWorktreeSelector(selector, requiredHostId),
         validateAgentAccountPreferencePatch: async (patch, worktree) => {
           const hostId = worktree.identity?.executionHostId ?? worktree.hostId ?? 'local'
           await validateAgentAccountPreferencePatch({

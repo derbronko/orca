@@ -255,6 +255,13 @@ export function RepositoryPane({
           forceVisible={forceFullPaneForRepoMatch}
         />
 
+        <RepositoryPaneAgentAccountsSection
+          repo={repo}
+          selectedProjectSetupId={selectedProjectSetupId}
+          isLocalWindowsProject={isLocalWindowsProject}
+          forceVisible={forceFullPaneForRepoMatch}
+        />
+
         {!isFolder ? (
           <>
             <RepositoryHostSetupsSection
@@ -292,13 +299,6 @@ export function RepositoryPane({
             <RepositoryGitHubAccountSection
               repo={repo}
               updateRepo={updateSelectedRepo}
-              forceVisible={forceFullPaneForRepoMatch}
-            />
-
-            <RepositoryPaneAgentAccountsSection
-              repo={repo}
-              selectedProjectSetupId={selectedProjectSetupId}
-              isLocalWindowsProject={isLocalWindowsProject}
               forceVisible={forceFullPaneForRepoMatch}
             />
 

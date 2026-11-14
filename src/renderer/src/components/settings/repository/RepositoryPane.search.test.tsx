@@ -2,12 +2,22 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { getDefaultSettings } from '../../../../../shared/constants'
+import type { ProjectHostSetup } from '../../../../../shared/project-types'
 import type { Repo } from '../../../../../shared/repo-types'
 import { useAppStore } from '@/store'
 import { TooltipProvider } from '../../ui/tooltip'
 import { RepositoryPane } from './RepositoryPane'
 
-beforeEach(() => useAppStore.setState(useAppStore.getInitialState(), true))
+beforeEach(() => {
+  useAppStore.setState(useAppStore.getInitialState(), true)
+  Object.assign(window, {
+    api: {
+      ...window.api,
+      claudeAccounts: { list: vi.fn().mockResolvedValue({ accounts: [] }) },
+      codexAccounts: { list: vi.fn().mockResolvedValue({ accounts: [] }) }
+    }
+  })
+})
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
@@ -150,3 +160,51 @@ it('shows the wait-for-setup row when searching its title', () => {
     screen.getByRole('switch', { name: 'Wait for setup to complete before starting agent' })
   ).toBeTruthy()
 })
+
+it.each(['', 'Codex'])(
+  'shows agent account picker for folder projects with query "%s"',
+  (query) => {
+    const repo: Repo = {
+      id: 'project-1',
+      path: '/tmp/sample-project',
+      displayName: 'Sample project',
+      badgeColor: '',
+      addedAt: 0,
+      kind: 'folder'
+    }
+    const setup: ProjectHostSetup = {
+      id: 'setup-1',
+      projectId: 'repo:project-1',
+      hostId: 'local',
+      repoId: repo.id,
+      path: repo.path,
+      displayName: repo.displayName,
+      kind: 'folder',
+      setupState: 'ready',
+      setupMethod: 'imported-existing-folder',
+      createdAt: 0,
+      updatedAt: 0
+    }
+    useAppStore.setState({
+      settings: getDefaultSettings('/tmp'),
+      settingsSearchQuery: query,
+      repos: [repo],
+      projectHostSetups: [setup]
+    })
+    render(
+      <TooltipProvider>
+        <RepositoryPane
+          repo={repo}
+          yamlHooks={null}
+          hasHooksFile={false}
+          hooksInspectionReady
+          mayNeedUpdate={false}
+          updateRepo={vi.fn()}
+          removeProject={vi.fn()}
+        />
+      </TooltipProvider>
+    )
+
+    expect(screen.getByRole('combobox', { name: 'Claude' })).toBeTruthy()
+  }
+)

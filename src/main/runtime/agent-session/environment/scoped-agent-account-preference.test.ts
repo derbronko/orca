@@ -76,6 +76,31 @@ describe('workspace account assignment scope', () => {
     ).toEqual({ source: 'project', account: { provider: 'claude', accountId: 'project-other' } })
   })
 
+  it('matches a project setup by its effective execution host', () => {
+    const source = {
+      getWorktreeMetaForHost: () => ({ projectHostSetupId: 'setup-runtime-owned' }),
+      getProjectHostSetups: () => [
+        {
+          id: 'setup-runtime-owned',
+          repoId: 'repo',
+          hostId: 'ssh:owner' as const,
+          executionHostId: 'local' as const,
+          agentAccounts: { codex: { accountId: 'project-local-runtime' } }
+        }
+      ]
+    }
+
+    expect(
+      resolveScopedAgentAccountPreference(source, 'codex', {
+        workspaceId: first,
+        executionHostId: 'local'
+      })
+    ).toEqual({
+      source: 'project',
+      account: { provider: 'codex', accountId: 'project-local-runtime' }
+    })
+  })
+
   it('uses a folder override only on its owner and otherwise inherits global behavior', () => {
     const source = store()
     expect(

@@ -20,7 +20,7 @@ export type ScopedAccountPreferenceStore = {
   ) => Pick<WorktreeMeta, 'agentAccounts' | 'projectHostSetupId'> | undefined
   getProjectHostSetups?: () => readonly Pick<
     ProjectHostSetup,
-    'id' | 'repoId' | 'hostId' | 'agentAccounts'
+    'id' | 'repoId' | 'hostId' | 'executionHostId' | 'agentAccounts'
   >[]
   getFolderWorkspace?: (
     id: string
@@ -47,7 +47,9 @@ export function resolveScopedAgentAccountPreference(
   const meta = store.getWorktreeMetaForHost?.(workspaceId, location.executionHostId)
   const repoId = getRepoIdFromWorktreeId(workspaceId)
   const setups = (store.getProjectHostSetups?.() ?? []).filter(
-    (setup) => setup.hostId === location.executionHostId && setup.repoId === repoId
+    (setup) =>
+      (setup.executionHostId ?? setup.hostId) === location.executionHostId &&
+      setup.repoId === repoId
   )
   const setup = meta?.projectHostSetupId
     ? setups.find((entry) => entry.id === meta.projectHostSetupId)

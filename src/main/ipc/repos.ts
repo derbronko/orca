@@ -74,7 +74,7 @@ export function registerRepoHandlers(
       repo: Parameters<typeof runtime.repositoryForkBackfill.resolve>[0]
     ) => runtime.repositoryForkBackfill.resolve(repo)
   }
-  registerProjectHostSetupHandlers(mainWindow, store, metadata)
+  registerProjectHostSetupHandlers(mainWindow, store, metadata, runtime)
   registerRepoCreationHandlers(mainWindow, store, metadata.enqueueRepositoryMetadata)
   registerProjectGroupHandlers(mainWindow, store)
   registerFolderWorkspaceHandlers(mainWindow, store, runtime)

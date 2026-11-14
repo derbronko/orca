@@ -9,6 +9,7 @@ import { SearchableSetting } from '../section-layout/SearchableSetting'
 import { useTranslate } from '@/i18n/use-translate'
 import { AgentAccountPreferenceFields } from '../../agent-accounts/agent-account-preference-fields'
 import { useManagedAgentAccountOptions } from '../../agent-accounts/use-managed-agent-account-options'
+import { getRepositoryAgentAccountsSearchEntry } from './repository-agent-accounts-search'
 
 export function RepositoryAgentAccountsSection({
   setup,
@@ -24,6 +25,7 @@ export function RepositoryAgentAccountsSection({
   forceVisible?: boolean
 }): React.JSX.Element {
   const t = useTranslate()
+  const searchEntry = getRepositoryAgentAccountsSearchEntry(t)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const targetHostId = setup.executionHostId ?? setup.hostId
@@ -72,12 +74,9 @@ export function RepositoryAgentAccountsSection({
 
   return (
     <SearchableSetting
-      title={t('agentAccounts.projectTitle', 'Agent accounts')}
-      description={t(
-        'agentAccounts.projectDescription',
-        'Choose managed accounts for new sessions created in this project on the selected host.'
-      )}
-      keywords={['agent accounts', 'Claude', 'Codex', 'login', 'managed account']}
+      title={searchEntry.title}
+      description={searchEntry.description}
+      keywords={searchEntry.keywords}
       className="space-y-3 py-3"
       forceVisible={forceVisible}
     >

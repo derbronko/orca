@@ -5,6 +5,13 @@ import type { Repo } from '../../../../shared/repo-types'
 import { LOCAL_EXECUTION_HOST_ID } from '../../../../shared/execution-host'
 import type { ProjectExecutionRuntimeResolution } from '../../../../shared/execution-host/project-execution-runtime'
 import type { RuntimeAccountController } from './runtime-account-controller'
+
+type AccountPreferenceValidationAccess = {
+  managedAgentAccounts: Pick<
+    RuntimeAccountController['managedAgentAccounts'],
+    'validateAgentAccountPreferencePatch'
+  >
+}
 import type { RuntimeStore } from '../../construction/runtime-store-contract'
 import {
   resolveLocalLaunchScopeRuntime,
@@ -13,7 +20,7 @@ import {
 } from '../../../workspaces/execution-host/local-project-runtime-resolution'
 
 export function createRuntimeAgentAccountPreferenceValidationPorts(args: {
-  accounts: RuntimeAccountController
+  accounts: AccountPreferenceValidationAccess
   getStore: () => RuntimeStore
   resolveFolderConnectionId: (workspace: FolderWorkspace) => string | null
 }) {
@@ -51,7 +58,7 @@ export function createRuntimeAgentAccountPreferenceValidationPorts(args: {
 }
 
 export async function validateAgentAccountPreferencePatch(args: {
-  accounts: RuntimeAccountController
+  accounts: AccountPreferenceValidationAccess
   patch: AgentAccountPreferencePatch
   hostId: string
   runtimeResolution?: ProjectExecutionRuntimeResolution
@@ -74,7 +81,7 @@ export async function validateAgentAccountPreferencePatch(args: {
 }
 
 export async function validateProjectHostSetupAgentAccounts(args: {
-  accounts: RuntimeAccountController
+  accounts: AccountPreferenceValidationAccess
   store: RuntimeStore
   patch: AgentAccountPreferencePatch
   setup: ProjectHostSetup
@@ -101,7 +108,7 @@ export async function validateProjectHostSetupAgentAccounts(args: {
 }
 
 export async function validateFolderWorkspaceAgentAccounts(args: {
-  accounts: RuntimeAccountController
+  accounts: AccountPreferenceValidationAccess
   store: RuntimeStore
   patch: AgentAccountPreferencePatch
   workspace: FolderWorkspace
