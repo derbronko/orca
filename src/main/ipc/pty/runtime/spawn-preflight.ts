@@ -21,6 +21,11 @@ import { resolvePtySpawnHostEnv } from '../spawn-host-env'
 import { ptySpawnPaneFromIds, stampPtySpawnPaneEnv } from '../spawn-pane-env'
 import { getConnectionExecutionHostId } from '../../../../shared/execution-host'
 import {
+  resolvePtyAgentAccountBinding,
+  stripPtyClaudeAuthForAccountBinding,
+  withPtyAccountBinding
+} from '../host-env/pty-agent-account-binding'
+import {
   ensureJcodeRuntimeDir,
   JCODE_RUNTIME_DIR_ENV_KEY
 } from '../../../../shared/jcode-runtime-dir'
@@ -50,7 +55,10 @@ export async function prepareRuntimePtySpawn(
   if (freshSpawnRecovery) {
     await freshSpawnRecovery
   }
-  ctx.isClaudeLaunch = !ctx.preAdoptedStablePane && isClaudeLaunchCommand(args.command)
+  ctx.isClaudeLaunch =
+    !ctx.preAdoptedStablePane &&
+    (args.launchAgent === 'claude' ||
+      isClaudeLaunchCommand(args.command ?? args.launchConfig?.agentCommand))
   ctx.isDaemonHostSpawn =
     !(ctx.provider instanceof LocalPtyProvider) && !routesFreshSpawnsToLocalProvider(ctx.provider)
   ctx.callerRequestedSessionId = args.sessionId
@@ -100,11 +108,53 @@ export async function prepareRuntimePtySpawn(
   ctx.expectedWslDistro = target.expectedWslDistro
   ctx.wslHoldReadAnchor = target.wslHoldReadAnchor
   ctx.codexSelectionTarget = target.codexSelectionTarget
-  args.env = withClaudeProfileTerminalEnv(args.env, ctx.codexSelectionTarget)
+  const requestedProvider =
+    args.launchAgent === 'claude' || ctx.isClaudeLaunch
+      ? 'claude'
+      : args.launchAgent === 'codex'
+        ? 'codex'
+        : undefined
+  const accountBinding = resolvePtyAgentAccountBinding({
+    provider: requestedProvider,
+    launchConfig: args.launchConfig,
+    workspaceId: args.worktreeId,
+    executionHostId: getConnectionExecutionHostId(args.connectionId),
+    target: ctx.codexSelectionTarget,
+    store: ctx.deps.store,
+    allowWorkspacePreference:
+      !ctx.preAdoptedStablePane &&
+      args.resumeOrigin !== 'saved' &&
+      !args.resumeProviderSession &&
+      (args.isNewSession === true ||
+        args.agentSessionCreateOperationId !== undefined ||
+        args.sessionId === undefined)
+  })
+  if (accountBinding && args.launchAgent && accountBinding.provider !== args.launchAgent) {
+    throw new Error(`This pane is bound to a ${accountBinding.provider} account.`)
+  }
+  if (accountBinding) {
+    args.launchConfig = withPtyAccountBinding(args.launchConfig, args.command, accountBinding)
+  }
+  args.env =
+    accountBinding?.provider === 'claude'
+      ? stripPtyClaudeAuthForAccountBinding(args.env)
+      : withClaudeProfileTerminalEnv(args.env, ctx.codexSelectionTarget)
   ctx.claudeAuth =
-    ctx.isClaudeLaunch && ctx.deps.prepareClaudeAuth
-      ? await ctx.deps.prepareClaudeAuth(ctx.codexSelectionTarget)
-      : null
+    accountBinding?.provider === 'claude' && ctx.deps.prepareClaudeAuth
+      ? await ctx.deps.prepareClaudeAuth(ctx.codexSelectionTarget, {
+          accountId: accountBinding.accountId
+        })
+      : ctx.isClaudeLaunch && ctx.deps.prepareClaudeAuth
+        ? await ctx.deps.prepareClaudeAuth(ctx.codexSelectionTarget)
+        : null
+  if (
+    accountBinding?.provider === 'claude' &&
+    (!ctx.claudeAuth ||
+      ctx.claudeAuth.provenance !== `profile:${accountBinding.accountId}` ||
+      ctx.claudeAuth.envPatch.CLAUDE_CONFIG_DIR !== ctx.claudeAuth.configDir)
+  ) {
+    throw new Error('The assigned Claude account could not be prepared for this launch.')
+  }
 
   ctx.shouldPersistHostSessionBinding = args.persistHostSessionBinding === true
   if (ctx.shouldPersistHostSessionBinding) {
@@ -153,6 +203,7 @@ export async function prepareRuntimePtySpawn(
     shellOverride: ctx.daemonShellOverride,
     expectedWslDistro: ctx.expectedWslDistro,
     codexSelectionTarget: ctx.codexSelectionTarget,
+    accountBinding: args.launchConfig?.accountBinding,
     preAdopted: Boolean(ctx.preAdoptedStablePane),
     isDaemonHostSpawn: ctx.isDaemonHostSpawn,
     sessionId: ctx.sessionId,

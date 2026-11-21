@@ -14,6 +14,9 @@ import { displayNameUpdatePinsLabel } from '../../../../../../shared/worktree/me
 import { parseWorkspaceKey } from '../../../../../../shared/workspace-scope'
 import { ORCA_SIDEBAR_INPUTS_IS_MAIN } from '../../../../../../shared/sidebar-inputs-switch'
 import { getRepoIdFromWorktreeId } from '../../../../../../shared/worktree/id'
+import { mergeAgentAccountPreferencePatch } from '../../../../../../shared/agent-accounts/agent-account-preference'
+import type { WorktreeMeta } from '../../../../../../shared/worktree/meta-types'
+import type { WorkspaceAttachmentMutation } from '../../../../../../shared/workspace-attachments/workspace-attachment-mutation'
 import {
   findKnownWorktreeById,
   getFolderWorkspaceMetaUpdates
@@ -64,6 +67,18 @@ export function createUpdateWorktreeMeta(
             linkedItemsSelectionChanged:
               updates.linkedItemsSelectionChanged ?? hasExplicitWorkspaceReviewSelection(updates)
           }
+    const { agentAccounts: agentAccountPatch, ...metadataUpdates } = mutationUpdates
+    const stateMutationUpdates: Partial<WorktreeMeta> & WorkspaceAttachmentMutation = {
+      ...metadataUpdates,
+      ...(agentAccountPatch
+        ? {
+            agentAccounts: mergeAgentAccountPreferencePatch(
+              existingWorktree?.agentAccounts,
+              agentAccountPatch
+            )
+          }
+        : {})
+    }
     const workspaceScope = parseWorkspaceKey(worktreeId)
     if (workspaceScope?.type === 'folder') {
       const folderUpdates = getFolderWorkspaceMetaUpdates(mutationUpdates)
@@ -91,7 +106,10 @@ export function createUpdateWorktreeMeta(
         return { ok: false, error: err instanceof Error ? err.message : String(err) }
       }
     }
-    let normalizedUpdates = normalizeWorkspaceAttachmentUpdate(existingWorktree, mutationUpdates)
+    let normalizedUpdates = normalizeWorkspaceAttachmentUpdate(
+      existingWorktree,
+      stateMutationUpdates
+    )
     // Why: manual PR linking supplies only the number; resolve the head branch so Push targets the review branch.
     const linkedPrForPushTarget = isPositiveHostedReviewNumber(normalizedUpdates.linkedPR)
       ? normalizedUpdates.linkedPR
@@ -120,7 +138,7 @@ export function createUpdateWorktreeMeta(
       return { ok: true }
     }
     normalizedUpdates = normalizeGitHubPRSuppressionUpdate(
-      normalizeWorkspaceAttachmentUpdate(worktreeForUpdate, mutationUpdates),
+      normalizeWorkspaceAttachmentUpdate(worktreeForUpdate, stateMutationUpdates),
       worktreeForUpdate?.linkedPR
     )
     const currentResolvedPushTarget =
@@ -258,7 +276,16 @@ export function createUpdateWorktreeMeta(
           () => [
             {
               worktreeId,
-              updates,
+              updates: {
+                ...(updates.displayName !== undefined ? { displayName: updates.displayName } : {}),
+                ...(updates.isPinned !== undefined ? { isPinned: updates.isPinned } : {}),
+                ...(updates.isArchived !== undefined ? { isArchived: updates.isArchived } : {}),
+                ...(updates.isUnread !== undefined ? { isUnread: updates.isUnread } : {}),
+                ...(updates.workspaceStatus !== undefined
+                  ? { workspaceStatus: updates.workspaceStatus }
+                  : {}),
+                ...(updates.manualOrder !== undefined ? { manualOrder: updates.manualOrder } : {})
+              },
               executionHostId:
                 options?.executionHostId ?? findKnownWorktreeById(get(), worktreeId)?.hostId
             }

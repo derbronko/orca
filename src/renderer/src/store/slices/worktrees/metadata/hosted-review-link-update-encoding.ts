@@ -1,4 +1,4 @@
-import type { WorktreeMeta } from '../../../../../../shared/worktree/meta-types'
+import type { WorktreeMeta, WorktreeMetaUpdate } from '../../../../../../shared/worktree/meta-types'
 import type { Worktree } from '../../../../../../shared/worktree/types'
 import type { RuntimeWorktreeMetaUpdates } from '../listing/worktree-slice-types'
 import type { HostedReviewLinkKey } from '../../../../../../shared/worktree/hosted-review/hosted-review-links'
@@ -11,12 +11,14 @@ export function getHostedReviewLinkForMetaRefresh(
   return Object.hasOwn(updates, key) ? (updates[key] ?? null) : (existingWorktree?.[key] ?? null)
 }
 
-export function hasExplicitPushTargetClear(updates: Partial<WorktreeMeta>): boolean {
+export function hasExplicitPushTargetClear(
+  updates: Pick<WorktreeMetaUpdate, 'pushTarget'>
+): boolean {
   return Object.hasOwn(updates, 'pushTarget') && updates.pushTarget === undefined
 }
 
 export function encodePushTargetClearForRuntimeRpc(
-  updates: Partial<WorktreeMeta>
+  updates: WorktreeMetaUpdate
 ): RuntimeWorktreeMetaUpdates {
   if (!hasExplicitPushTargetClear(updates)) {
     return updates

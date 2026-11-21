@@ -39,6 +39,10 @@ import {
 import type { AgentSessionRecordStore } from '../../../runtime/agent-session/records/agent-session-record-store'
 import type { AgentSessionJournal } from '../../agent-session-journal/journal-store'
 import type { AdoptedTranscriptSource } from '../../agent-session-journal/history-import/adopted-transcript-source'
+import {
+  isManagedAgentAccountRef,
+  type ManagedAgentAccountRef
+} from '../../../../shared/agent-accounts/agent-account-preference'
 import { structuredAgentSessionRefusalMessage } from '../operations/structured-agent-session-refusal-message'
 
 /** Clients cannot assert spawn tokens, claim keys or owner death; only host observations grant authority. */
@@ -48,6 +52,7 @@ export type AgentSessionAttachParams = {
   provider: StructuredAgentId
   agent: StructuredAgentId
   accountHome: AgentSessionAccountHome
+  accountBinding?: ManagedAgentAccountRef
   /** Retain native in params because fingerprints include it. */
   runtimeKind: 'native'
   /** Host-only create defaults; remote schemas reject these. */
@@ -92,6 +97,7 @@ export function attachFingerprintFields(params: AgentSessionAttachParams): Recor
     provider: params.provider,
     agent: params.agent,
     accountHome: params.accountHome,
+    accountBinding: params.accountBinding,
     runtimeKind: params.runtimeKind,
     providerHandle: params.providerHandle,
     // Adoption changes identity; transcript location is transient and excluded.
@@ -111,6 +117,20 @@ export function admitAttachOrRefuse(
         'agent_session_operation_invalid',
         { reason: 'requestMalformed' },
         `A ${params.provider} session cannot be started as ${params.agent}.`
+      )
+    }
+  }
+  if (
+    params.accountBinding !== undefined &&
+    (!isManagedAgentAccountRef(params.accountBinding) ||
+      params.accountBinding.provider !== params.provider)
+  ) {
+    return {
+      ok: false,
+      refusal: refuse(
+        'agent_session_operation_invalid',
+        { reason: 'requestMalformed' },
+        `A ${params.provider} session requires a valid ${params.provider} account binding.`
       )
     }
   }
@@ -212,6 +232,7 @@ export function reserveRequestFor(input: {
     location: params.location,
     provider: params.provider,
     accountHome: params.accountHome,
+    ...(params.accountBinding ? { accountBinding: params.accountBinding } : {}),
     ...(params.options ? { options: params.options, models: input.models } : {}),
     ...(params.envelope.expectedRuntimeFence === null && params.surfaceTabId
       ? { surfaceTabId: params.surfaceTabId }

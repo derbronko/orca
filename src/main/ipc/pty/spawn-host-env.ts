@@ -5,6 +5,7 @@ import type { GlobalSettings } from '../../../shared/global-settings-types'
 import { stampRuntimeSourceEnv } from '../../../shared/runtime-source-env'
 import { SETUP_AGENT_SEQUENCE_SETUP_SCRIPT_ENV } from '../../../shared/agent-launch/startup/setup-agent-sequencing'
 import type { TuiAgent } from '../../../shared/agent-launch/catalog/tui-agent'
+import type { ManagedAgentAccountRef } from '../../../shared/agent-accounts/agent-account-preference'
 import { isTuiAgent } from '../../../shared/agent-launch/catalog/tui-agent-config'
 import { addWslEnvKeys } from '../../../shared/wsl-env'
 import { isAgentStatusHooksEnabled } from '../../../shared/agent-hook-listener/configuration/agent-status-hooks-setting'
@@ -76,6 +77,7 @@ type PtySpawnHostEnvArgs = {
   shellOverride: string | undefined
   expectedWslDistro: string | null
   codexSelectionTarget: CodexAccountSelectionTarget
+  accountBinding?: ManagedAgentAccountRef
   /** An adopted stable pane launches nothing, so it gets no launch prep. */
   preAdopted: boolean
   isDaemonHostSpawn: boolean
@@ -118,12 +120,15 @@ export async function resolvePtySpawnHostEnv(args: PtySpawnHostEnvArgs): Promise
 
 async function resolvePtySpawnHostEnvForAct(args: PtySpawnHostEnvArgs): Promise<PtySpawnHostEnv> {
   const { deps, codexSelectionTarget: target } = args
+  const boundCodexAccountId =
+    args.accountBinding?.provider === 'codex' ? args.accountBinding.accountId : undefined
   const codexResumePreparation = args.preAdopted
     ? null
     : deps.prepareCodexResumeHome({
         launchAgent: args.launchAgent,
         providerSession: args.resumeProviderSession,
         target,
+        ...(boundCodexAccountId ? { accountId: boundCodexAccountId } : {}),
         // Client-supplied CODEX_HOME can bypass host resume preparation.
         launchEnv: args.env,
         ...(args.resumeOnSelectedAccount ? { useSelectedAccount: true } : {})
@@ -137,8 +142,12 @@ async function resolvePtySpawnHostEnvForAct(args: PtySpawnHostEnvArgs): Promise<
   const launchCommand = codexResumeLaunch.command
   const baseEnv = deps.stripSequencedStartupResumeArgv(args.env, codexResumeLaunch)
   const launchesCodex = args.launchAgent === 'codex'
+  const launchContext = {
+    launchesCodex,
+    ...(boundCodexAccountId ? { accountId: boundCodexAccountId } : {})
+  }
   const selectLaunchCodexHome = async (): Promise<string | null> =>
-    (await deps.getSelectedCodexHomePath?.(target, baseEnv, { launchesCodex })) ?? null
+    (await deps.getSelectedCodexHomePath?.(target, baseEnv, launchContext)) ?? null
   let selectedCodexHomePath = !args.preAdopted
     ? getCompatibleSelectedCodexHomePath(
         target,
@@ -149,6 +158,9 @@ async function resolvePtySpawnHostEnvForAct(args: PtySpawnHostEnvArgs): Promise<
           : await selectLaunchCodexHome()
       )
     : null
+  if (!args.preAdopted && boundCodexAccountId && launchesCodex && !selectedCodexHomePath) {
+    throw new Error('The assigned Codex account home could not be resolved for this launch.')
+  }
   if (!args.preAdopted && launchesCodex && !args.callerNamedSession) {
     const resolution = resolveCodexHomeAfterManagedAuthReadiness({
       selectedCodexHomePath,
@@ -158,12 +170,13 @@ async function resolvePtySpawnHostEnvForAct(args: PtySpawnHostEnvArgs): Promise<
       resolveCurrent: async () =>
         getCompatibleSelectedCodexHomePath(
           target,
-          (await deps.getSelectedCodexHomePath?.(target, baseEnv, { launchesCodex })) ?? null
+          (await deps.getSelectedCodexHomePath?.(target, baseEnv, launchContext)) ?? null
         ),
       resolveAfterUnavailable: async (unavailableManagedHomePath) =>
         getCompatibleSelectedCodexHomePath(
           target,
           (await deps.getSelectedCodexHomePath?.(target, baseEnv, {
+            ...(boundCodexAccountId ? { accountId: boundCodexAccountId } : {}),
             unavailableManagedHomePath,
             launchesCodex
           })) ?? null

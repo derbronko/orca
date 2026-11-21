@@ -4,6 +4,7 @@ import type {
 } from './listing/worktree-fetch-options'
 import type {
   WorktreeMetaUpdateOptions,
+  WorktreeMetaUpdate,
   WorktreeMetaBatchUpdate
 } from './metadata/worktree-meta-update-options'
 import type {
@@ -11,7 +12,6 @@ import type {
   ActiveWorktreeStateTransition
 } from './session/worktree-selection-contract'
 
-import type { WorkspaceAttachmentMutation } from '../../../../../shared/workspace-attachments/workspace-attachment-mutation'
 import type { WorkspaceReferenceObservationContext } from '@/lib/workspace/attachments/workspace-attachment-observed-origin'
 import type {
   CreateWorktreeCallOptions,
@@ -35,7 +35,6 @@ import type {
   WorkspaceLineage,
   WorktreeLineage
 } from '../../../../../shared/worktree/lineage-types'
-import type { WorktreeMeta } from '../../../../../shared/worktree/meta-types'
 import type {
   DetectedWorktree,
   DetectedWorktreeListResult,
@@ -220,7 +219,7 @@ export type WorktreeSlice = {
    *  the user is waiting on should read the result and say what went wrong. */
   updateWorktreeMeta: (
     worktreeId: string,
-    updates: Partial<WorktreeMeta> & WorkspaceAttachmentMutation,
+    updates: WorktreeMetaUpdate,
     options?: WorktreeMetaUpdateOptions
   ) => Promise<{ ok: true } | { ok: false; error: string }>
   ensureHostedReviewPushTarget: (worktreeId: string) => Promise<void>

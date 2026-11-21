@@ -1,7 +1,8 @@
 import type { WorkspaceAttachmentMutation } from '../../../../../../shared/workspace-attachments/workspace-attachment-mutation'
 import type { AppState } from '../../../types'
 import type { FolderWorkspace } from '../../../../../../shared/folder-workspaces/folder-workspace-types'
-import type { WorktreeMeta } from '../../../../../../shared/worktree/meta-types'
+import type { WorktreeMeta, WorktreeMetaUpdate } from '../../../../../../shared/worktree/meta-types'
+import type { AgentAccountPreferencePatch } from '../../../../../../shared/agent-accounts/agent-account-preference'
 import type { DetectedWorktreeListResult, Worktree } from '../../../../../../shared/worktree/types'
 
 import {
@@ -173,10 +174,10 @@ function firstDetectedDirectoryForHost(
     : physical?.row
 }
 
-export function getFolderWorkspaceMetaUpdates(
-  updates: Partial<WorktreeMeta> & WorkspaceAttachmentMutation
-) {
-  const next: Partial<FolderWorkspace> & WorkspaceAttachmentMutation = Object.fromEntries(
+export function getFolderWorkspaceMetaUpdates(updates: WorktreeMetaUpdate) {
+  const next: Omit<Partial<FolderWorkspace>, 'agentAccounts'> & {
+    agentAccounts?: AgentAccountPreferencePatch
+  } & WorkspaceAttachmentMutation = Object.fromEntries(
     (
       [
         'comment',
@@ -187,6 +188,7 @@ export function getFolderWorkspaceMetaUpdates(
         'manualOrder',
         'lastActivityAt',
         'workspaceStatus',
+        'agentAccounts',
         'createdWithAgent',
         'pendingFirstAgentMessageRename',
         'firstAgentMessageRenameError',
@@ -200,6 +202,9 @@ export function getFolderWorkspaceMetaUpdates(
       .filter((field) => updates[field] !== undefined)
       .map((field) => [field, updates[field]])
   )
+  if (updates.agentAccounts !== undefined) {
+    next.agentAccounts = updates.agentAccounts
+  }
   if (updates.displayName !== undefined) {
     next.name = updates.displayName
     next.pendingFirstAgentMessageRename = updates.pendingFirstAgentMessageRename ?? false

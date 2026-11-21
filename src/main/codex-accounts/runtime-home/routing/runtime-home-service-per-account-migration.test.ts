@@ -70,6 +70,57 @@ afterEach(() => {
 })
 
 describe('CodexRuntimeHomeService per-account takeover composition', () => {
+  it('prepares explicit managed accounts independently of global selection', async () => {
+    const accountA = createManagedAccount(
+      'account-a',
+      'provider-a',
+      createReadyAuth('a@example.com', 'provider-a', 'a', 1_000)
+    )
+    const accountB = createManagedAccount(
+      'account-b',
+      'provider-b',
+      createReadyAuth('b@example.com', 'provider-b', 'b', 1_000),
+      'b@example.com'
+    )
+    const { settings, store } = createStore([accountA, accountB], accountA.id)
+    const { CodexRuntimeHomeService } = await import('../../runtime-home-service')
+    const service = new CodexRuntimeHomeService(store as never)
+
+    expect(service.resolveManagedAccountHome(accountB.id)).toBe(accountB.managedHomePath)
+    expect(settings.activeCodexManagedAccountId).toBe(accountA.id)
+    await expect(
+      service.prepareForCodexLaunchAsync(undefined, undefined, { accountId: accountB.id })
+    ).resolves.toBe(accountB.managedHomePath)
+    expect(settings.activeCodexManagedAccountId).toBe(accountA.id)
+    expect(settings.activeCodexManagedAccountIdsByRuntime?.host).toBe(accountA.id)
+
+    await expect(
+      service.prepareForCodexLaunchAsync(undefined, undefined, { accountId: accountA.id })
+    ).resolves.toBe(accountA.managedHomePath)
+    expect(settings.activeCodexManagedAccountId).toBe(accountA.id)
+  })
+
+  it('refuses explicit missing and signed-out managed accounts without falling back', async () => {
+    const account = createManagedAccount(
+      'account-a',
+      'provider-a',
+      createAuth('a@example.com', 'provider-a', 'a', 1_000)
+    )
+    const { settings, store } = createStore([account], null)
+    const { CodexRuntimeHomeService } = await import('../../runtime-home-service')
+    const service = new CodexRuntimeHomeService(store as never)
+    rmSync(join(account.managedHomePath, 'auth.json'))
+
+    await expect(
+      service.prepareForCodexLaunchAsync(undefined, undefined, { accountId: 'removed' })
+    ).rejects.toThrow()
+    await expect(
+      service.prepareForCodexLaunchAsync(undefined, undefined, { accountId: account.id })
+    ).rejects.toThrow()
+    expect(settings.activeCodexManagedAccountId).toBeNull()
+    expect(settings.activeCodexManagedAccountIdsByRuntime?.host).toBeNull()
+  })
+
   it('upgrades a realistic two-account shared-home fixture without losing auth or sessions', async () => {
     const accountOneStale = createAuth('one@example.com', 'acct-1', 'one-stale', 1_000)
     const accountOneMigrated = createAuth('one@example.com', 'acct-1', 'one-migrated', 2_000)
@@ -265,4 +316,17 @@ function createAuth(email: string, accountId: string, token: string, expiresAt: 
       expires_at: expiresAt
     }
   })}\n`
+}
+
+function createReadyAuth(
+  email: string,
+  accountId: string,
+  token: string,
+  expiresAt: number
+): string {
+  const auth: { tokens: Record<string, unknown> } = JSON.parse(
+    createAuth(email, accountId, token, expiresAt)
+  )
+  auth.tokens.access_token = `access-${accountId}`
+  return JSON.stringify(auth)
 }

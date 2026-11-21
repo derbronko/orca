@@ -358,7 +358,6 @@ export class DaemonPtyRouter implements IPtyProvider {
   getLegacyAdapters(): readonly DaemonPtyAdapter[] {
     return this.legacy
   }
-
   getAllAdapters(): readonly DaemonPtyAdapter[] {
     return this.allAdapters()
   }

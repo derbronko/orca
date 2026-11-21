@@ -1,6 +1,8 @@
 import type { AgentStatusIpcPayload } from '../../../shared/agent-status/contracts/agent-status-ipc-payload'
 import type { StructuredAgentSessionResumeSource } from '../../../shared/agent-session/structured-agent-session-create'
 import type { StructuredAgentId } from '../../../shared/agent-session/lifecycle/agent-session-provider-handle'
+import type { ManagedAgentAccountRef } from '../../../shared/agent-accounts/agent-account-preference'
+import { isManagedAgentAccountRef } from '../../../shared/agent-accounts/agent-account-preference'
 import { agentSessionRefusalError } from '../../../shared/agent-session/failures/agent-session-wire-refusals'
 import {
   adoptsCliConversations,
@@ -15,7 +17,7 @@ type CliSource = NonNullable<StructuredAgentSessionResumeSource['cliSource']>
 export type StructuredAgentCliSourceRoute = 'native-local' | 'unsupported' | 'unknown'
 export type StructuredAgentCliSourceLocator =
   | { kind: 'none' }
-  | { kind: 'matched'; transcriptPath?: string }
+  | { kind: 'matched'; transcriptPath?: string; accountBinding?: ManagedAgentAccountRef }
   | { kind: 'absent' }
 
 export type StructuredAgentCliSourceEvidence = (
@@ -149,5 +151,20 @@ function resolveSource(input: {
       reason: 'hostUnsupported'
     })
   }
-  return { kind: 'matched', ...(path ? { transcriptPath: path } : {}) }
+  const accountBinding = row.launchConfig?.accountBinding
+  if (
+    accountBinding !== undefined &&
+    (!isManagedAgentAccountRef(accountBinding) || accountBinding.provider !== input.agent)
+  ) {
+    throw agentSessionRefusalError(
+      'agent_session_identity_required',
+      { reason: 'transcriptUnreadable' },
+      'The source conversation account could not be verified.'
+    )
+  }
+  return {
+    kind: 'matched',
+    ...(path ? { transcriptPath: path } : {}),
+    ...(accountBinding ? { accountBinding } : {})
+  }
 }

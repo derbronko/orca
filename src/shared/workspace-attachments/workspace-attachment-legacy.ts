@@ -1,4 +1,4 @@
-import type { WorktreeMeta } from '../worktree/meta-types'
+import type { WorktreeMeta, WorktreeMetaUpdate } from '../worktree/meta-types'
 import type { WorkspaceAttachment } from '../worktree/types'
 import { normalizeWorkspaceAttachments } from './workspace-attachment-normalization'
 
@@ -26,8 +26,8 @@ export type WorkspaceAttachmentMetadata = Partial<
 >
 
 export function getLegacyWorkspaceReviewSelectionUpdates(
-  updates: Partial<WorktreeMeta>
-): Partial<WorktreeMeta> {
+  updates: WorktreeMetaUpdate
+): WorktreeMetaUpdate {
   const reviews = WORKSPACE_ATTACHMENT_NUMBER_SLOTS.filter(([, , type]) => type !== 'issue')
   const selected = reviews.find(([slot]) => typeof updates[slot] === 'number' && updates[slot] > 0)
   if (updates.linkedItems !== undefined || !selected) {

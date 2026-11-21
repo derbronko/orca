@@ -5,6 +5,8 @@ import type { ExecutionHostId } from '../../../../../../shared/execution-host'
 
 export type WorktreeMetaUpdateGuard = (worktree: Worktree | DetectedWorktree | undefined) => boolean
 
+export type { WorktreeMetaUpdate } from '../../../../../../shared/worktree/meta-types'
+
 export type WorktreeMetaUpdateOptions = {
   /** Required to mutate one row when the legacy locator exists on multiple hosts. */
   executionHostId?: ExecutionHostId

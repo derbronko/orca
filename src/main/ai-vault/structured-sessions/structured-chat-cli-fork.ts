@@ -143,6 +143,7 @@ export async function prepareStructuredChatCliFork(
       cliForkSource: {
         agent: copy.agent,
         sourceAgent: metadata.sessionHistory.rowAgents.at(-1) ?? agent,
+        ...(record.accountBinding ? { accountBinding: record.accountBinding } : {}),
         sessionId: copy.sessionId,
         filePath: copy.filePath ?? '',
         codexHome: null,
@@ -189,6 +190,7 @@ export async function prepareStructuredChatCliFork(
     sessionId: providerSessionId,
     filePath,
     codexHome,
+    ...(record.accountBinding ? { accountBinding: record.accountBinding } : {}),
     executionHostId: LOCAL_EXECUTION_HOST_ID,
     fork: true
   })
@@ -210,6 +212,7 @@ export async function prepareStructuredChatCliFork(
     cliForkSource: {
       agent,
       sourceAgent: agent,
+      ...(record.accountBinding ? { accountBinding: record.accountBinding } : {}),
       sessionId: providerSessionId,
       filePath,
       cwd,

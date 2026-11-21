@@ -26,7 +26,7 @@ export function createPtyIpcSpawnDrivers(ctx: {
     getSelectedCodexHomePath?: (
       target?: { runtime?: 'host' | 'wsl'; wslDistro?: string | null },
       launchEnv?: NodeJS.ProcessEnv,
-      launchContext?: { unavailableManagedHomePath?: string }
+      launchContext?: { unavailableManagedHomePath?: string; accountId?: string }
     ) => string | null,
     getSettings?: () => {
       agentStatusHooksEnabled?: boolean

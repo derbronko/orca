@@ -6,7 +6,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
-import { Bell, BellOff, Pencil, Pin, PinOff, Unlink } from 'lucide-react'
+import { Bell, BellOff, Pencil, Pin, PinOff, Unlink, UsersRound } from 'lucide-react'
 import { cn } from '@/lib/class-names'
 import { WorktreeRowOpenInSubMenu } from '../open/WorktreeRowOpenInSubMenu'
 import { WorktreeDeveloperMenu } from '../open/WorktreeDeveloperMenu'
@@ -45,6 +45,7 @@ export default function WorktreeContextMenuView({ model }: { model: WorktreeCont
     handleAssignWorkspaceStatus,
     handleCloseAutoFocus,
     handleCloseTerminals,
+    handleOpenAgentAccountsDialog,
     handleRemoveParentLink,
     handleRename,
     handleSleepSubtree,
@@ -183,6 +184,10 @@ export default function WorktreeContextMenuView({ model }: { model: WorktreeCont
                 {worktree.isPinned
                   ? t('auto.components.sidebar.WorktreeContextMenu.697d0f6e1b', 'Unpin')
                   : t('auto.components.sidebar.WorktreeContextMenu.3baa7d6507', 'Pin')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={handleOpenAgentAccountsDialog} disabled={isDeleting}>
+                <UsersRound className="size-3.5" />
+                {t('agentAccounts.menuTitle', 'Agent accounts…')}
               </DropdownMenuItem>
             </>
           )}

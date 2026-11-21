@@ -20,6 +20,7 @@ import {
   removeWorktreeMetadataForHost
 } from '../loading-store/worktree-metadata/worktree-identity-metadata'
 import type { WorktreeMeta } from '../../../shared/worktree/meta-types'
+import { normalizeAgentAccountPreferences } from '../../../shared/agent-accounts/agent-account-preference'
 import { fillDefaultWorktreeMetaFields } from '../../../shared/worktree/metadata/meta-persisted-defaults'
 import { getWorkspaceAttachments } from '../../../shared/workspace-attachments/workspace-attachments'
 import { rehomeLocalOnlyWorktreeMetadata } from '../loading-store/worktree-metadata/local-only-worktree-meta-rehoming'
@@ -88,6 +89,7 @@ export function gcStaleWorktreeMeta(state: PersistedState): number {
 }
 
 function normalizeLinkedMetadata(meta: WorktreeMeta): boolean {
+  const agentAccounts = normalizeAgentAccountPreferences(meta.agentAccounts)
   const linkedWorkItem = normalizeWorkspaceLinkedItem(meta.linkedWorkItem)
   const sourceContext = normalizeStoredTaskSourceContext(meta.linkedTaskSourceContext)
   const linkedTaskSourceContext = isWorkspaceLinkedItemSourceContextMatch(
@@ -97,6 +99,16 @@ function normalizeLinkedMetadata(meta: WorktreeMeta): boolean {
     ? sourceContext
     : null
   let changed = false
+  if (meta.agentAccounts !== undefined && agentAccounts === undefined) {
+    delete meta.agentAccounts
+    changed = true
+  } else if (
+    agentAccounts !== undefined &&
+    JSON.stringify(meta.agentAccounts) !== JSON.stringify(agentAccounts)
+  ) {
+    meta.agentAccounts = agentAccounts
+    changed = true
+  }
   const linkedItems = getWorkspaceAttachments(meta)
   if (
     meta.linkedItems !== undefined &&

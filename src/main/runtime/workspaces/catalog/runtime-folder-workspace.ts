@@ -39,6 +39,7 @@ export function mergeRuntimeFolderWorkspace(
     ...(meta.projectHostSetupId !== undefined
       ? { projectHostSetupId: meta.projectHostSetupId }
       : {}),
+    ...(meta.agentAccounts !== undefined ? { agentAccounts: meta.agentAccounts } : {}),
     ...(creatorProvenance ? { creatorProvenance } : {}),
     path: repo.path,
     head: '',

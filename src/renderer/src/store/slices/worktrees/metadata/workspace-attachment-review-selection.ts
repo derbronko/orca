@@ -1,6 +1,6 @@
-import type { WorkspaceAttachmentMutation } from '../../../../../../shared/workspace-attachments/workspace-attachment-mutation'
 import type { WorktreeMeta } from '../../../../../../shared/worktree/meta-types'
 import type { Worktree } from '../../../../../../shared/worktree/types'
+import type { WorktreeMetaUpdate } from './worktree-meta-update-options'
 import { getHostedReviewLinkForMetaRefresh } from './hosted-review-link-update-encoding'
 
 const REVIEW_SLOTS = [
@@ -11,7 +11,17 @@ const REVIEW_SLOTS = [
   'linkedGiteaPR'
 ] as const
 
-export function hasExplicitWorkspaceReviewSelection(updates: Partial<WorktreeMeta>): boolean {
+export function hasExplicitWorkspaceReviewSelection(
+  updates: Pick<
+    Partial<WorktreeMeta>,
+    | 'linkedPR'
+    | 'linkedGitLabMR'
+    | 'linkedBitbucketPR'
+    | 'linkedAzureDevOpsPR'
+    | 'linkedGiteaPR'
+    | 'linkedItems'
+  >
+): boolean {
   return (
     REVIEW_SLOTS.some((slot) => typeof updates[slot] === 'number' && updates[slot] > 0) ||
     REVIEW_SLOTS.every((slot) => updates[slot] === null)
@@ -36,9 +46,9 @@ export function getWorkspaceReviewRefreshHints(
 }
 
 export function getWorkspaceReviewPersistenceUpdates(
-  mutation: Partial<WorktreeMeta> & WorkspaceAttachmentMutation,
+  mutation: WorktreeMetaUpdate,
   normalized: Partial<WorktreeMeta>
-): Partial<WorktreeMeta> & WorkspaceAttachmentMutation {
+): WorktreeMetaUpdate {
   // Keep the original delta; generated review slots guard its derived push target on the host.
   return {
     ...mutation,

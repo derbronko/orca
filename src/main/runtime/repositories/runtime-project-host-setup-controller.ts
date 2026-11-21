@@ -13,6 +13,7 @@ import type {
   ProjectUpdateArgs
 } from '../../../shared/project-types'
 import type { Repo } from '../../../shared/repo-types'
+import type { AgentAccountPreferencePatch } from '../../../shared/agent-accounts/agent-account-preference'
 import {
   getRepoExecutionHostId,
   getSshTargetIdForExecutionHost,
@@ -44,6 +45,7 @@ import {
 import { runtimeVisibleProjectHostSetups } from '../workspaces/catalog/runtime-visible-catalog'
 import { assertNoProjectWorktreeCreate } from '../../workspaces/creation/worktree-create-in-flight'
 import { releaseWorktreeCreatePreparationsForRepo } from '../../workspaces/creation/preparation/worktree-create-preparation-project-removal'
+import { validateProjectHostSetupAgentAccountPatch } from './project-host-setup-agent-account-validation'
 import {
   findProjectHostSetup,
   SERVER_SSH_PROJECT_ADD_UNAVAILABLE_MESSAGE,
@@ -59,6 +61,11 @@ type RuntimeProjectHostSetupDependencies = RepositoryMetadataOwner & {
   invalidateWorktreeScan: (repoId: string) => void
   notifyReposChanged: () => void
   countLiveTerminalsForRepo: (repo: Repo) => number
+  validateAgentAccountPreferencePatch?: (
+    patch: AgentAccountPreferencePatch,
+    setup: ProjectHostSetup,
+    repo?: Repo
+  ) => Promise<void>
 }
 
 // cloneRepo runs locally; accepting SSH would register the client's checkout as a remote repo.
@@ -165,13 +172,18 @@ export class RuntimeProjectHostSetupController {
   }
 
   // Refuse unavailable/WSL-moving projects before any Git probe.
-  updateSetup(args: ProjectHostSetupUpdateArgs): Promise<ProjectHostSetupUpdateResult> {
+  async updateSetup(args: ProjectHostSetupUpdateArgs): Promise<ProjectHostSetupUpdateResult> {
     const store = this.deps.getStore()
     const updateProjectHostSetup = store?.updateProjectHostSetup?.bind(store)
     if (!store || !updateProjectHostSetup) {
       throw new Error('runtime_unavailable')
     }
     assertWslMoveHostSetupIdWritable(store, args)
+    await validateProjectHostSetupAgentAccountPatch({
+      store,
+      update: args,
+      validate: this.deps.validateAgentAccountPreferencePatch
+    })
     return this.finishSetupUpdate(store, updateProjectHostSetup, args)
   }
 

@@ -1,6 +1,8 @@
 import { createRepoRowExecutionHostLookup } from '../../../../shared/execution-host/worktree-execution-host-resolution'
 import type { GitPushTarget, Worktree } from '../../../../shared/worktree/types'
 import type { WorktreeMeta } from '../../../../shared/worktree/meta-types'
+import type { AgentAccountPreferencePatch } from '../../../../shared/agent-accounts/agent-account-preference'
+import { mergeAgentAccountPreferencePatch } from '../../../../shared/agent-accounts/agent-account-preference'
 import {
   folderWorkspaceKey,
   parseWorkspaceKey,
@@ -28,8 +30,9 @@ import { assertParentInAnotherStore } from '../lineage/cross-store-parent-store-
 import type { CrossStoreParentRef } from '../../../../shared/worktree/lineage-types'
 import type { ResolvedWorktree } from '../catalog/runtime-worktree-path-identity'
 
-type Updates = Omit<Partial<WorktreeMeta>, 'pushTarget'> & {
+type Updates = Omit<Partial<WorktreeMeta>, 'pushTarget' | 'agentAccounts'> & {
   pushTarget?: GitPushTarget | null
+  agentAccounts?: AgentAccountPreferencePatch
   lineage?: {
     parentWorktree?: string
     /** path: and name: in parentWorktree may name a folder workspace. */
@@ -41,6 +44,10 @@ type Updates = Omit<Partial<WorktreeMeta>, 'pushTarget'> & {
 
 type Ports = {
   resolveWorktree: (selector: string) => Promise<ResolvedWorktree>
+  validateAgentAccountPreferencePatch?: (
+    patch: NonNullable<Updates['agentAccounts']>,
+    worktree: ResolvedWorktree
+  ) => Promise<void>
   /** The parent by its real kind; throws `selector_not_found` when absent. */
   resolveParent: (
     selector: string,
@@ -62,6 +69,11 @@ export async function updateRuntimeManagedWorktreeMetadata(args: {
 }): Promise<Worktree> {
   const worktree = await args.ports.resolveWorktree(args.selector)
   const { lineage, ...metaUpdates } = args.updates
+  const {
+    agentAccounts: accountPatch,
+    pushTarget: pushTargetUpdate,
+    ...plainMetaUpdates
+  } = metaUpdates
   const folderParent = lineage?.parentWorktree ? folderParentKey(lineage.parentWorktree) : undefined
   const previousParentRepoId = lineage
     ? splitWorktreeId(args.store.getWorktreeLineage?.(worktree.id)?.parentWorktreeId ?? '')?.repoId
@@ -69,11 +81,17 @@ export async function updateRuntimeManagedWorktreeMetadata(args: {
   let nextParentRepoId: string | undefined
   const executionHostId = worktree.identity?.executionHostId ?? worktree.hostId
   if (
+    accountPatch &&
+    Object.values(accountPatch).some((value) => value !== null && value !== undefined)
+  ) {
+    await args.ports.validateAgentAccountPreferencePatch?.(accountPatch, worktree)
+  }
+  if (
     isWslMoveSourceHost(executionHostId) &&
     shouldDropWslMoveProjectUpdate(
       args.store,
       wslMoveProjectRefForWorkspace(worktree.id),
-      lineage ? args.updates : metaUpdates
+      lineage ? args.updates : plainMetaUpdates
     )
   ) {
     return worktree
@@ -86,11 +104,20 @@ export async function updateRuntimeManagedWorktreeMetadata(args: {
     args.ports.invalidateResolved()
     args.ports.invalidateScan(worktree.repoId)
   }
-  const clearPushTarget =
-    Object.hasOwn(metaUpdates, 'pushTarget') && metaUpdates.pushTarget === null
-  const normalized: Partial<WorktreeMeta> = clearPushTarget
-    ? { ...metaUpdates, pushTarget: undefined }
-    : (metaUpdates as Partial<WorktreeMeta>)
+  const clearPushTarget = Object.hasOwn(metaUpdates, 'pushTarget') && pushTargetUpdate === null
+  const mergedAccountPreferences =
+    accountPatch !== undefined
+      ? mergeAgentAccountPreferencePatch(
+          args.store.getWorktreeMetaForHost?.(worktree.id, target.hostId)?.agentAccounts,
+          accountPatch
+        )
+      : undefined
+  const normalized: Partial<WorktreeMeta> = {
+    ...plainMetaUpdates,
+    pushTarget: pushTargetUpdate ?? undefined,
+    ...(accountPatch !== undefined ? { agentAccounts: mergedAccountPreferences } : {}),
+    ...(clearPushTarget ? { pushTarget: undefined } : {})
+  }
   const persisted: Partial<WorktreeMeta> = omitUndefinedProperties(
     normalized.displayName !== undefined
       ? {

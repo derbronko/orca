@@ -1,5 +1,4 @@
 import { assertWorkspaceAttachmentWriteCapability } from '../../../../runtime/workspace-links/runtime-workspace-attachment-capabilities'
-import type { WorkspaceAttachmentMutation } from '../../../../../../shared/workspace-attachments/workspace-attachment-mutation'
 import { getLegacyWorkspaceReviewSelectionUpdates } from '../../../../../../shared/workspace-attachments/workspace-attachment-legacy'
 import { WORKTREE_LINKED_ITEMS_RUNTIME_CAPABILITY } from '../../../../../../shared/workspace-attachments/workspace-attachment-capabilities'
 import {
@@ -16,7 +15,7 @@ import {
 import { toRuntimeWorktreeSelector } from '../../../../runtime/rpc/targets/runtime-worktree-selector'
 import { translate } from '@/i18n/i18n'
 import type { RuntimeClientTarget } from '../../../../../../shared/runtime-client-target'
-import type { WorktreeMeta } from '../../../../../../shared/worktree/meta-types'
+import type { WorktreeMetaUpdate } from './worktree-meta-update-options'
 import type { ExecutionHostId } from '../../../../../../shared/execution-host'
 import { encodePushTargetClearForRuntimeRpc } from './hosted-review-link-update-encoding'
 
@@ -55,7 +54,7 @@ export function isDisplayNamePersistencePending(
 export function persistWorktreeMeta(
   target: RuntimeClientTarget,
   worktreeId: string,
-  updates: Partial<WorktreeMeta> & WorkspaceAttachmentMutation,
+  updates: WorktreeMetaUpdate,
   executionHostId?: ExecutionHostId,
   identityKey?: string
 ): Promise<void> {
@@ -84,7 +83,7 @@ export function persistWorktreeMeta(
 async function persistWorktreeMetaUntracked(
   target: RuntimeClientTarget,
   worktreeId: string,
-  updates: Partial<WorktreeMeta> & WorkspaceAttachmentMutation,
+  updates: WorktreeMetaUpdate,
   executionHostId?: ExecutionHostId,
   identityKey?: string
 ): Promise<void> {

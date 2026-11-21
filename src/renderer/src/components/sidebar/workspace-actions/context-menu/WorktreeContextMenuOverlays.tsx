@@ -2,6 +2,7 @@ import { ProjectGroupNameDialog } from '../../worktree-list/rows/ProjectGroupNam
 import { WorktreeParentPickerPopover } from '../parenting/WorktreeParentPickerPopover'
 import { useTranslate } from '@/i18n/use-translate'
 import type { WorktreeContextMenuModel } from './use-worktree-context-menu-model'
+import { WorkspaceAgentAccountsDialog } from '../accounts/WorkspaceAgentAccountsDialog'
 
 export function WorktreeContextMenuOverlays({ model }: { model: WorktreeContextMenuModel }) {
   const t = useTranslate()
@@ -33,6 +34,17 @@ export function WorktreeContextMenuOverlays({ model }: { model: WorktreeContextM
           clickedChild={model.parentPicker.child}
           anchorElement={model.parentPicker.anchorElement}
           onOpenChange={model.handleParentPickerOpenChange}
+        />
+      ) : null}
+      {!model.isMultiContext ? (
+        <WorkspaceAgentAccountsDialog
+          open={model.agentAccountsDialogOpen}
+          onOpenChange={model.setAgentAccountsDialogOpen}
+          worktree={model.worktree}
+          executionHostId={model.workspaceExecutionHostId}
+          wslUnsupported={model.workspaceUsesUnsupportedRuntime}
+          projectPreferences={model.projectAgentAccountPreferences}
+          updateWorktreeMeta={model.updateWorktreeMeta}
         />
       ) : null}
     </>

@@ -6,6 +6,10 @@ import type { RepoHookSettings } from './orca-yaml-hook-types'
 import type { RepoSourceControlAiOverrides } from './source-control/ai/settings/source-control-ai-settings-types'
 import type { Repo, RepoKind } from './repo-types'
 import type { ProjectHostSetupTarget } from './project-host-setup-target'
+import type {
+  AgentAccountPreferencePatch,
+  AgentAccountPreferences
+} from './agent-accounts/agent-account-preference'
 
 export type ProjectProviderIdentity = {
   provider: 'github'
@@ -47,6 +51,8 @@ export type RepoProjectHostSetupMethod = Extract<
 
 export type ProjectHostSetup = {
   id: string
+  /** Host-local account defaults for newly created sessions in this setup. */
+  agentAccounts?: AgentAccountPreferences
   projectId: string
   hostId: ExecutionHostId
   repoId: string
@@ -113,7 +119,7 @@ export type ProjectHostSetupUpdateArgs = ProjectHostSetupTarget & {
       | 'gitUsername'
       | 'kind'
     >
-  >
+  > & { agentAccounts?: AgentAccountPreferencePatch }
 }
 
 export type ProjectHostSetupDeleteArgs = ProjectHostSetupTarget & {

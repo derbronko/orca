@@ -1,4 +1,5 @@
 import { delimiter } from 'node:path'
+import { deleteEnvironmentVariables } from '../../../../shared/environment-overlay'
 import { isLegacyTerminalShimPathEntry } from '../../../pty/shell-startup/legacy-terminal-shim-dir'
 import { resolvePathEnvKey } from '../../../pty/environment/windows-path-segment-merge'
 
@@ -43,7 +44,5 @@ export function deleteRequestedEnvKeys(
   if (!env || !keys) {
     return
   }
-  for (const key of keys) {
-    delete env[key]
-  }
+  deleteEnvironmentVariables(env, keys, process.platform)
 }

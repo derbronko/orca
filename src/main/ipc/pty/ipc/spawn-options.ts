@@ -17,6 +17,7 @@ export async function buildPtyIpcSpawnOptions(ctx: PtyIpcSpawnState): Promise<vo
       ? { ...ctx.env, ORCA_TERMINAL_HANDLE: ctx.preAllocatedHandle }
       : ctx.env,
     callerEnvToDelete: args.envToDelete,
+    accountBinding: args.launchConfig?.accountBinding,
     agentTeamsEnvToDelete: ctx.agentTeamsEnvToDelete ?? [],
     isDaemonHostSpawn: ctx.isDaemonHostSpawn,
     connectionId: args.connectionId,

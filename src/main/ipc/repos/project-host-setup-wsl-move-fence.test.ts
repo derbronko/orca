@@ -14,6 +14,7 @@ import {
   resetWslMoveFenceForTests
 } from '../../persistence/moving-wsl-projects/quiescence/wsl-move-scope-guard'
 import { RuntimeProjectHostSetupController } from '../../runtime/repositories/runtime-project-host-setup-controller'
+import { createRuntimeAgentAccountPreferenceValidationPorts } from '../../runtime/agent-session/environment/agent-account-preference-validation'
 import { RuntimeRepositoryIssueCommand } from '../../runtime/repositories/runtime-repository-issue-command'
 import { RuntimeRepositorySettingsController } from '../../runtime/repositories/runtime-repository-settings-controller'
 import * as issueCommandFile from '../../workspace-hooks/issue-command-file'
@@ -78,15 +79,32 @@ const setupFor = (repoId: string) => {
   return setup
 }
 
+function registerSetupHandlers(): void {
+  registerProjectHostSetupHandlers(
+    new BrowserWindow(),
+    store,
+    {
+      enqueueRepositoryMetadata: vi.fn(),
+      resolveRepositoryMetadata: vi.fn().mockResolvedValue(true)
+    },
+    {
+      updateProjectHostSetup: async (args) => {
+        const result = store.updateProjectHostSetup(args)
+        if (!result) {
+          throw new Error(`Project host setup not found: ${args.setupId}`)
+        }
+        return result
+      }
+    }
+  )
+}
+
 describe('project host setups under a WSL move', () => {
   it('refuses IPC edits to a local setup of a moving repo and leaves others alone', async () => {
     store.addRepo(repo('repo-1'))
     store.addRepo(repo('repo-2'))
     seedWslMoveCutover(testState.dir, cutover('move-1', 'source-fenced'))
-    registerProjectHostSetupHandlers(new BrowserWindow(), store, {
-      enqueueRepositoryMetadata: vi.fn(),
-      resolveRepositoryMetadata: vi.fn().mockResolvedValue(true)
-    })
+    registerSetupHandlers()
     const moving = setupFor('repo-1')
 
     await expect(
@@ -110,10 +128,7 @@ describe('project host setups under a WSL move', () => {
   it("keeps a setup's own repo frozen once the WSL host owns it", async () => {
     store.addRepo(repo('repo-1'))
     seedWslMoveCutover(testState.dir, cutover('move-1', 'destination-committed'))
-    registerProjectHostSetupHandlers(new BrowserWindow(), store, {
-      enqueueRepositoryMetadata: vi.fn(),
-      resolveRepositoryMetadata: vi.fn().mockResolvedValue(true)
-    })
+    registerSetupHandlers()
     const owned = setupFor('repo-1')
 
     await expect(
@@ -124,7 +139,7 @@ describe('project host setups under a WSL move', () => {
     )
   })
 
-  it('refuses a runtime setup delete for a moving repo', () => {
+  it('refuses a runtime setup delete for a moving repo', async () => {
     store.addRepo(repo('repo-1'))
     seedWslMoveCutover(testState.dir, cutover('move-1', 'source-fenced'))
     const controller = new RuntimeProjectHostSetupController({
@@ -142,10 +157,60 @@ describe('project host setups under a WSL move', () => {
     const setupId = setupFor('repo-1').id
 
     expect(() => controller.deleteSetup({ setupId })).toThrow(WslMoveProjectFencedError)
-    expect(() => controller.updateSetup({ setupId, updates: { displayName: 'x' } })).toThrow(
-      WslMoveProjectFencedError
-    )
+    await expect(
+      controller.updateSetup({ setupId, updates: { displayName: 'x' } })
+    ).rejects.toBeInstanceOf(WslMoveProjectFencedError)
     expect(store.getRepo('repo-1')).toBeDefined()
+  })
+})
+
+describe('project host setup account validation through desktop IPC', () => {
+  it('rejects an unknown managed account before persisting the setup preference', async () => {
+    store.addRepo(repo('repo-invalid-account'))
+    const setup = setupFor('repo-invalid-account')
+    const managedAgentAccounts = {
+      validateAgentAccountPreferencePatch: vi.fn(async (patch) => {
+        if (patch.codex?.accountId === 'nonexistent-test-account') {
+          throw new Error('Unknown managed Codex account')
+        }
+      })
+    }
+    const ports = createRuntimeAgentAccountPreferenceValidationPorts({
+      accounts: { managedAgentAccounts },
+      getStore: () => store,
+      resolveFolderConnectionId: () => null
+    })
+    const runtime = new RuntimeProjectHostSetupController({
+      getStore: () => store,
+      listRepos: () => store.getRepos(),
+      addRepo: vi.fn(),
+      cloneRepo: vi.fn(),
+      invalidateResolvedWorktrees: vi.fn(),
+      invalidateWorktreeScan: vi.fn(),
+      notifyReposChanged: vi.fn(),
+      enqueueRepositoryMetadata: vi.fn(),
+      resolveRepositoryMetadata: vi.fn().mockResolvedValue(true),
+      countLiveTerminalsForRepo: () => 0,
+      ...ports.projectHostSetup
+    })
+    registerProjectHostSetupHandlers(
+      new BrowserWindow(),
+      store,
+      {
+        enqueueRepositoryMetadata: vi.fn(),
+        resolveRepositoryMetadata: vi.fn().mockResolvedValue(true)
+      },
+      { updateProjectHostSetup: runtime.updateSetup.bind(runtime) }
+    )
+
+    await expect(
+      invoke('projectHostSetups:update', {
+        setupId: setup.id,
+        hostId: 'local',
+        updates: { agentAccounts: { codex: { accountId: 'nonexistent-test-account' } } }
+      })
+    ).rejects.toThrow('Unknown managed Codex account')
+    expect(setupFor('repo-invalid-account').agentAccounts).toBeUndefined()
   })
 })
 

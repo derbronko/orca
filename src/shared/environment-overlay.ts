@@ -20,3 +20,20 @@ export function overlayEnvironmentVariables<T extends string | undefined>(
   }
   return { ...merged, ...normalized }
 }
+
+export function deleteEnvironmentVariables<T>(
+  env: Record<string, T> | undefined,
+  keys: readonly string[] | undefined,
+  platform: NodeJS.Platform
+): void {
+  if (!env || !keys?.length) {
+    return
+  }
+  const normalize = (key: string) => (platform === 'win32' ? key.toUpperCase() : key)
+  const removed = new Set(keys.map(normalize))
+  for (const key of Object.keys(env)) {
+    if (removed.has(normalize(key))) {
+      delete env[key]
+    }
+  }
+}

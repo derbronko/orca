@@ -78,6 +78,8 @@ export type PtySpawnOptions = {
   expectedIncarnationId?: PtyIncarnationId
   /** True when runtime state makes the expected incarnation a hard attach fence. */
   expectedIncarnationIsAuthoritative?: boolean
+  /** A bound account launch must be retained by the PTY daemon for cold restore. */
+  requiresAccountBindingRetention?: true
   /** Windows-only per-tab shell selection without changing the persistent default. */
   shellOverride?: string
   /** Optional Unix interactive profile args; ignored for command and agent launches. */

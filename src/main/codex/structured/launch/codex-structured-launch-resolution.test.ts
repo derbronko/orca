@@ -39,6 +39,22 @@ function record(overrides: Partial<AgentSessionRecord> = {}): AgentSessionRecord
 }
 
 describe('codex structured launch resolution', () => {
+  it('refuses a different prepared account for a bound conversation', async () => {
+    const bound = record({
+      schemaVersion: 3,
+      accountBinding: { provider: 'codex', accountId: 'assigned' },
+      accountHome: { variable: 'CODEX_HOME', path: '/accounts/assigned' }
+    })
+    const launch = createCodexStructuredLaunchResolver({
+      store: { getRecord: () => bound, pinLaunchDirectory: async () => bound },
+      resolveWorkspacePath: async () => '/project',
+      resolveCommand: () => ({ command: '/codex', prefixArgs: [] }),
+      resolveLaunchArgs: () => [],
+      prepareLaunchAccountHome: async () => ({ variable: 'CODEX_HOME', path: '/accounts/global' })
+    })
+    await expect(launch({ identity: IDENTITY })).rejects.toThrow('assigned account')
+  })
+
   it('resumes a chat on the account selected after it was created, bringing its thread along', async () => {
     const root = mkdtempSync(join(tmpdir(), 'orca-codex-chat-account-move-'))
     vi.stubEnv('ORCA_USER_DATA_PATH', join(root, 'user-data'))

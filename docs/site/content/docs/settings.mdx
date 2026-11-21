@@ -69,6 +69,10 @@ Settings are grouped into panes. Everything here is searchable with `Cmd-,` then
 
 - Optional saved accounts per provider. Without any, Orca uses your existing logins.
 - **Claude** and **Codex** — **Add Account** signs in a separate, isolated account; switching applies to new sessions. See [Hot-swap Codex accounts](/docs/agents/codex-hot-swap).
+- **Project and workspace accounts** — choose a default for Claude and Codex in **Settings → Repository → Agent accounts**, or override it from a workspace's **Agent accounts** context menu. New sessions use the workspace choice, then the project's choice on that host, then the global selection. **Inherit** clears an override.
+- Sessions created with a project or workspace assignment keep that account through restart, sleep and resume. Changing a default affects future sessions. If an assigned account is removed or signed out, the session refuses to start instead of using another account. Existing sessions without an assignment retain their previous account-selection behavior.
+- Fixed assignments currently require independently signed-in managed accounts on the local host. System-default aliases, WSL and remote-host assignments are unavailable. Credentials stay in Orca's existing account folders.
+- Pinned terminals require a current terminal daemon that can retain their assignment. A launch routed to an older daemon is refused; reopen it on the current daemon before retrying.
 - **Antigravity** — **Save current account** remembers the current `agy` login and **Select** switches the machine's shared `agy` login back to it. This is switching, not parallel accounts. Antigravity chats use their own sign-in. See [Antigravity accounts](/docs/agents/antigravity-accounts).
 
 ## Chat

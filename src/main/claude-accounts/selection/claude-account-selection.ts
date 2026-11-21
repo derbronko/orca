@@ -45,7 +45,12 @@ export type ClaudeAccountStore = {
 
 export type ClaudeAccountRuntime = Pick<
   ClaudeRuntimeAuthService,
-  'syncForCurrentSelection' | 'publishAll' | 'removeAccountFolder' | 'prepareAccountFolder'
+  | 'syncForCurrentSelection'
+  | 'publishAll'
+  | 'removeAccountFolder'
+  | 'prepareAccountFolder'
+  | 'prepareForClaudeLaunch'
+  | 'resolveManagedAccountHome'
 > & {
   router: Pick<
     ClaudeRuntimeAuthService['router'],

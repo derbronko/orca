@@ -1,3 +1,4 @@
+import { join } from 'node:path'
 import { resolveHostCodexSessionSourceHome } from '../../../codex/history/rollouts/codex-session-source-home'
 import { startSystemCodexSessionBridgeInBackground } from '../../../codex/history/bridges/codex-session-bridge'
 import { startCodexAccountSessionBridgeInBackground } from '../../../codex/history/bridges/codex-account-session-bridge'
@@ -20,6 +21,7 @@ import { ManagedCodexHomeTemporarilyUnavailableError } from '../../managed-homes
 import { CodexRuntimeHomeRouting } from './runtime-home-service-home-routing'
 import { blockedWslDistroForExec } from '../../../wsl/discovery/wsl-background-exec-gate'
 import { getWslHomeAsync } from '../../../wsl/discovery/distro-catalog'
+import { hasStoredCodexCredential } from '../../credentials/managed-codex-auth-readiness'
 
 export abstract class CodexRuntimeHomeLaunch extends CodexRuntimeHomeRouting {
   protected initializeLastSyncedState(): void {
@@ -128,8 +130,23 @@ export abstract class CodexRuntimeHomeLaunch extends CodexRuntimeHomeRouting {
   async prepareForCodexLaunchAsync(
     target?: CodexAccountSelectionTarget,
     launchEnv?: NodeJS.ProcessEnv,
-    options?: { unavailableManagedHomePath?: string }
+    options?: { unavailableManagedHomePath?: string; accountId?: string }
   ): Promise<string | null> {
+    if (options?.accountId) {
+      if (target?.runtime === 'wsl') {
+        throw new Error('Explicit Codex accounts are not supported on WSL.')
+      }
+      const homePath = this.resolveManagedAccountHome(options.accountId)
+      syncSystemCodexResourcesIntoManagedHome(homePath)
+      syncSystemConfigIntoManagedCodexHome({
+        runtimeHomePath: homePath,
+        systemHomePath: getSystemCodexHomePath()
+      })
+      if (this.resolveManagedAccountHome(options.accountId) !== homePath) {
+        throw new Error('The requested Codex account changed during launch preparation.')
+      }
+      return homePath
+    }
     if (target?.runtime !== 'wsl') {
       return this.prepareForCodexLaunch(target, launchEnv, options)
     }
@@ -149,6 +166,27 @@ export abstract class CodexRuntimeHomeLaunch extends CodexRuntimeHomeRouting {
     await this.startLegacyWslAuthDrain(wslTarget, { throwOnFailure: true })
     this.finishWslLaunchPreparation(wslTarget, homePath)
     return homePath
+  }
+
+  /** Resolve one host-managed account without consulting or changing the active selection. */
+  resolveManagedAccountHome(accountId: string): string {
+    const account = this.store
+      .getSettings()
+      .codexManagedAccounts.find((candidate) => candidate.id === accountId)
+    if (!account || account.managedHomeRuntime === 'wsl' || this.getWslManagedHomePath(account)) {
+      throw new Error('The requested Codex account is unavailable on this host.')
+    }
+    const resolved = this.resolveSelfContainedManagedHome(account)
+    if (resolved.kind === 'indeterminate') {
+      throw new ManagedCodexHomeTemporarilyUnavailableError()
+    }
+    if (resolved.kind !== 'owned') {
+      throw new Error('The requested Codex account home is not trusted.')
+    }
+    if (!hasStoredCodexCredential(join(resolved.homePath, 'auth.json'))) {
+      throw new Error('The requested Codex account is signed out.')
+    }
+    return resolved.homePath
   }
 
   beginHostSystemDefaultSessionMigrationLaunch(

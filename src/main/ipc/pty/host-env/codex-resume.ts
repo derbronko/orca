@@ -31,6 +31,7 @@ export type PrepareCodexResumeHomeArgs = {
   target: CodexAccountSelectionTarget
   launchEnv?: NodeJS.ProcessEnv
   useSelectedAccount?: boolean
+  accountId?: string
 }
 
 export function prepareCodexResumeHome(
@@ -50,7 +51,8 @@ export function prepareCodexResumeHome(
       providerSession,
       target: args.target,
       launchEnv: args.launchEnv,
-      ...(args.useSelectedAccount ? { useSelectedAccount: true } : {})
+      ...(args.useSelectedAccount && !args.accountId ? { useSelectedAccount: true } : {}),
+      ...(args.accountId ? { accountId: args.accountId } : {})
     })
   }
 }

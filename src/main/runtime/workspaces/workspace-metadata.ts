@@ -5,6 +5,9 @@ import type {
 import type { WorktreeBaseStatusEvent } from '../../../shared/worktree/base-refs/base-ref-drift-types'
 import { probeRuntimeWorktreeDrift } from './metadata/runtime-worktree-drift-probe'
 import type { WorktreeMeta } from '../../../shared/worktree/meta-types'
+import type { ExecutionHostId } from '../../../shared/execution-host'
+import type { AgentAccountPreferencePatch } from '../../../shared/agent-accounts/agent-account-preference'
+import { validateAgentAccountPreferencePatch } from '../agent-session/environment/agent-account-preference-validation'
 import type { GitPushTarget } from '../../../shared/worktree/types'
 import {
   persistRuntimeManagedWorktreeSortOrder,
@@ -58,15 +61,17 @@ export abstract class RuntimeWorkspaceMetadata extends RuntimeWorktreeReviewBase
 
   async updateManagedWorktreeMeta(
     worktreeSelector: string,
-    updates: Omit<Partial<WorktreeMeta>, 'pushTarget'> & {
+    updates: Omit<Partial<WorktreeMeta>, 'pushTarget' | 'agentAccounts'> & {
       pushTarget?: GitPushTarget | null
+      agentAccounts?: AgentAccountPreferencePatch
       lineage?: {
         parentWorktree?: string
         matchFolderWorkspaces?: boolean
         crossStoreParent?: CrossStoreParentRef
         noParent?: boolean
       }
-    }
+    },
+    requiredHostId?: ExecutionHostId
   ) {
     if (!this.store) {
       throw new Error('runtime_unavailable')
@@ -76,7 +81,18 @@ export abstract class RuntimeWorkspaceMetadata extends RuntimeWorktreeReviewBase
       updates,
       store: this.store,
       ports: {
-        resolveWorktree: (selector) => this.resolveGitWorktreeSelector(selector),
+        resolveWorktree: (selector) => this.resolveGitWorktreeSelector(selector, requiredHostId),
+        validateAgentAccountPreferencePatch: async (patch, worktree) => {
+          const hostId = worktree.identity?.executionHostId ?? worktree.hostId ?? 'local'
+          await validateAgentAccountPreferencePatch({
+            accounts: this.accounts,
+            patch,
+            hostId,
+            runtimeResolution: this.resolveProjectRuntimeForWorktree(worktree.id),
+            launchDirectory: worktree.path,
+            store: this.requireStore()
+          })
+        },
         resolveParent: (selector, options) => this.worktreeLineage.resolveParent(selector, options),
         validateParent: (worktree, parent) => this.worktreeLineage.validateParent(worktree, parent),
         readStoreInstallationId: () => this.worktreeLineage.readStoreInstallationId(),

@@ -1,5 +1,7 @@
-import { ipcMain } from 'electron'
-import type { WorktreeMeta } from '../../../../shared/worktree/meta-types'
+import { ipcMain, type BrowserWindow } from 'electron'
+import type { Store } from '../../../persistence/loading-store/store'
+import type { OrcaRuntimeService } from '../../../runtime/orca-runtime'
+import type { WorktreeMetaUpdate } from '../../../../shared/worktree/meta-types'
 import { displayNameUpdatePinsLabel } from '../../../../shared/worktree/metadata/display-name-provenance'
 import { parseExecutionHostId } from '../../../../shared/execution-host'
 import { stripOrcaProvenanceMetaUpdates } from '../../../workspaces/removal/worktree-removal-safety'
@@ -16,7 +18,6 @@ import { isRemovedFolderWorkspaceInstance } from '../../../workspaces/catalog/fo
 import { resolveWorktreeMetaOwner } from '../../../persistence/host-qualified-worktree-meta'
 import { hostWorktreeTarget } from '../../../../shared/worktree/host-qualified-identity'
 import { worktreeWorkspaceKey } from '../../../../shared/workspace-scope'
-import type { WorktreeIpcContext } from '../worktree-ipc-context'
 import {
   isWslMoveSourceHost,
   isWslMoveWorkspaceBlocked,
@@ -24,16 +25,39 @@ import {
   wslMoveProjectRefForWorkspace
 } from '../../../persistence/moving-wsl-projects/quiescence/wsl-move-scope-guard'
 
-export function registerWorktreeMetadataHandlers(context: WorktreeIpcContext): void {
+type WorktreeMetadataStore = Pick<
+  Store,
+  | 'getRepo'
+  | 'getRepos'
+  | 'setWorktreeMeta'
+  | 'getWorktreeMeta'
+  | 'getWorktreeMetaForHost'
+  | 'getAllWorktreeLineage'
+  | 'getAllWorkspaceLineage'
+  | 'getAllCrossStoreWorkspaceLineage'
+  | 'getWorktreeLineage'
+  | 'getWorkspaceLineage'
+>
+
+type WorktreeMetadataRuntime = Pick<
+  OrcaRuntimeService,
+  'notifyWorktreesChangedForRemoteClients' | 'readStoreInstallationId' | 'updateManagedWorktreeMeta'
+>
+
+export function registerWorktreeMetadataHandlers(context: {
+  mainWindow: BrowserWindow
+  store: WorktreeMetadataStore
+  runtime: WorktreeMetadataRuntime
+}): void {
   const { mainWindow, store, runtime } = context
   ipcMain.handle(
     'worktrees:updateMeta',
-    (
+    async (
       _event,
       args: {
         worktreeId: string
         executionHostId?: string
-        updates: Partial<WorktreeMeta>
+        updates: WorktreeMetaUpdate
       }
     ) => {
       const executionHostId =
@@ -74,6 +98,21 @@ export function registerWorktreeMetadataHandlers(context: WorktreeIpcContext): v
         : resolveWorktreeMetaOwner(store, args.worktreeId)
       if (!target) {
         return null
+      }
+      const accountPatch = sanitizedUpdates.agentAccounts
+      if (
+        accountPatch &&
+        Object.values(accountPatch).some((value) => value !== null && value !== undefined)
+      ) {
+        const worktree = await runtime.updateManagedWorktreeMeta(
+          `id:${args.worktreeId}`,
+          sanitizedUpdates,
+          target.hostId
+        )
+        if (args.updates.displayName !== undefined) {
+          runtime.notifyWorktreesChangedForRemoteClients(getRepoIdFromWorktreeId(args.worktreeId))
+        }
+        return worktree
       }
       const meta = store.setWorktreeMeta(target, sanitizedUpdates)
       // Local optimistic state is current; notifying it would re-sort the sidebar (#209).

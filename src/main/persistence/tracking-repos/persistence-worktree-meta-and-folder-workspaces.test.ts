@@ -14,6 +14,7 @@ import { tmpdir } from 'node:os'
 import type { PersistedState } from '../../../shared/persisted-state-types'
 import { getDefaultWorkspaceSession } from '../../../shared/constants'
 import { folderWorkspaceKey } from '../../../shared/workspace-scope'
+import { hostWorktreeTarget } from '../../../shared/worktree/host-qualified-identity'
 
 const { loadUserSshConfigMock, sshConfigHostsToTargetsMock } = vi.hoisted(() => ({
   loadUserSshConfigMock: vi.fn(),
@@ -140,6 +141,56 @@ describe('Store', () => {
     store.flush()
     const restored = await createStore()
     expect(restored.getFolderWorkspace(workspace.id)?.folderPath).toBe('/workspace/platform-next ')
+  })
+
+  it('persists per-provider preferences on a native folder workspace and clears only the selected provider', async () => {
+    const store = await createStore()
+    const group = store.createProjectGroup({ name: 'Platform', createdFrom: 'manual' })
+    const workspace = store.createFolderWorkspace({
+      projectGroupId: group.id,
+      folderPath: '/workspace/platform'
+    })
+
+    store.updateFolderWorkspace(workspace.id, {
+      agentAccounts: {
+        claude: { accountId: 'claude-one' },
+        codex: { accountId: 'codex-one' }
+      }
+    })
+    store.updateFolderWorkspace(workspace.id, { agentAccounts: { claude: null } })
+    expect(store.getFolderWorkspace(workspace.id)?.agentAccounts).toEqual({
+      codex: { accountId: 'codex-one' }
+    })
+    store.flush()
+
+    const restored = await createStore()
+    expect(restored.getFolderWorkspace(workspace.id)?.agentAccounts).toEqual({
+      codex: { accountId: 'codex-one' }
+    })
+  })
+
+  it('retains distinct account preferences for same-path worktree instances through reload', async () => {
+    const store = await createStore()
+    store.addRepo(makeRepo({ id: 'same-path', path: '/repo' }))
+    const firstId = 'same-path::/repo::workspace:first-instance'
+    const secondId = 'same-path::/repo::workspace:second-instance'
+    store.setWorktreeMeta(hostWorktreeTarget({ id: firstId, hostId: 'local' }), {
+      instanceId: 'first-instance',
+      agentAccounts: { claude: { accountId: 'first' } }
+    })
+    store.setWorktreeMeta(hostWorktreeTarget({ id: secondId, hostId: 'local' }), {
+      instanceId: 'second-instance',
+      agentAccounts: { claude: { accountId: 'second' } }
+    })
+    store.flush()
+
+    const restored = await createStore()
+    expect(restored.getWorktreeMetaForHost(firstId, 'local')?.agentAccounts).toEqual({
+      claude: { accountId: 'first' }
+    })
+    expect(restored.getWorktreeMetaForHost(secondId, 'local')?.agentAccounts).toEqual({
+      claude: { accountId: 'second' }
+    })
   })
 
   it('backfills folder-scope SSH provenance from grouped repos despite unrelated same-path SSH repos', async () => {

@@ -59,7 +59,7 @@ export function resolveCommittedStructuredAgentSessionAdoptionIntent(input: {
 }): AgentSessionAttachParams | null {
   const history = structuredAgentRuntimeMetadata(input.agent)?.sessionHistory
   const replay =
-    (input.resumeFrom || input.forkFrom) && input.callerKey && input.host && history
+    input.callerKey && input.host && history
       ? findCommittedStructuredAgentSessionAdoptionReplay({
           agent: input.agent,
           providerSessionId: input.resumeFrom?.providerSessionId,
@@ -85,6 +85,7 @@ export function resolveCommittedStructuredAgentSessionAdoptionIntent(input: {
     provider: input.agent,
     agent: input.agent,
     accountHome: replay.record.accountHome,
+    ...(replay.record.accountBinding ? { accountBinding: replay.record.accountBinding } : {}),
     ...(input.forkFrom
       ? {
           options: {
@@ -132,6 +133,8 @@ export async function resolveStructuredAgentSessionAdoptionForCreate(input: {
   conversationName?: string
   resolveTranscriptSource?: () => StructuredAgentCliSourceLocator
   prepareCodexResume?: NativeCodexResumePreparation
+  /** Explicit account binding supplies the named home for Codex resume preparation. */
+  boundCodexHome?: string
 }) {
   try {
     const source = input.resolveTranscriptSource?.()
@@ -223,7 +226,8 @@ export async function resolveStructuredAgentSessionAdoptionForCreate(input: {
             adoption,
             input.providerSessionId,
             input.prepareCodexResume,
-            candidates
+            candidates,
+            input.boundCodexHome
           )
         : adoption,
       input.conversationName ??

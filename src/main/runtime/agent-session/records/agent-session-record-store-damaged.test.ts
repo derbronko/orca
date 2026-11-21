@@ -15,7 +15,8 @@ import type { AgentSessionRecordStore } from './agent-session-record-store'
 import type { AgentSessionReserveRequest } from '../ownership/agent-session-reservation-admission'
 import {
   editPersistedTestAgentSessionStore,
-  openTestAgentSessionRecordStore
+  openTestAgentSessionRecordStore,
+  readPersistedTestAgentSessionStore
 } from './agent-session-record-store-test-harness'
 import { closeTestJournalHostDatabases } from '../../../native-chat/agent-session-journal/store-lifecycle/journal-host-database-test-support'
 
@@ -120,6 +121,41 @@ afterEach(async () => {
 })
 
 describe('damaged saved conversation observations', () => {
+  it('loads and reads a valid v3 binding from the durable record store', async () => {
+    const first = await open()
+    await establishOwner(first)
+    const accountBinding = { provider: 'claude', accountId: 'managed-claude-a' }
+    await editPersistedTestAgentSessionStore(directory, (persisted) => {
+      Object.assign(persisted.records['session-alpha'], { schemaVersion: 3, accountBinding })
+    })
+
+    const store = await open()
+    expect(store.getRecord('session-alpha')).toMatchObject({ schemaVersion: 3, accountBinding })
+    await store.pinLaunchDirectory('session-alpha', '/work/tree')
+    expect(
+      (await readPersistedTestAgentSessionStore(directory)).records['session-alpha']
+    ).toMatchObject({
+      schemaVersion: 3,
+      accountBinding
+    })
+  })
+
+  it('keeps a v3 record with a missing binding intact and unavailable for writes', async () => {
+    const first = await open()
+    await establishOwner(first)
+    await editPersistedTestAgentSessionStore(directory, (persisted) => {
+      Object.assign(persisted.records['session-alpha'], { schemaVersion: 3 })
+    })
+    const before = await readPersistedTestAgentSessionStore(directory)
+
+    const store = await open()
+    expect(store.selectWritableRecord('session-alpha').kind).toBe('unreadable')
+    expect(() => store.requireWritableRecord('session-alpha')).toThrow()
+    expect((await readPersistedTestAgentSessionStore(directory)).records['session-alpha']).toEqual(
+      before.records['session-alpha']
+    )
+  })
+
   it('retains the durable claim for a damaged owner in preflight and transactional adoption', async () => {
     const first = await open()
     await establishOwner(first)

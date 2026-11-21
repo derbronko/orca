@@ -148,6 +148,15 @@ export function codexStructuredLaunchPart(
       ? requireLegacyAgentSessionAccountHome(selectedHome)
       : recordHome
     if (
+      record.accountBinding &&
+      selectedHome &&
+      !agentSessionAccountHomesEqual(selectedHome, record.accountHome)
+    ) {
+      throw new Error(
+        'The assigned account home changed; this Codex conversation cannot move automatically.'
+      )
+    }
+    if (
       resumeThreadId &&
       selectedHome &&
       !agentSessionAccountHomesEqual(selectedHome, record.accountHome)

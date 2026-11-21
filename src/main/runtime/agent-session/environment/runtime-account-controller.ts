@@ -1,4 +1,5 @@
 import type { ClaudeAccountService } from '../../../claude-accounts/service'
+import { createRuntimeManagedAgentAccountAccess } from './managed-agent-account-preparation'
 import { hasAppEnvironment } from '../../../../shared/app-environment'
 import { getManagedDataAccountService } from '../../../managed-data-accounts/service'
 import type {
@@ -67,6 +68,9 @@ type ClaudeSelectionNotifier = Pick<RuntimeNotifier, 'claudeAccountSelected'>
 
 export class RuntimeAccountController {
   private services: RuntimeAccountServices | null = null
+  readonly managedAgentAccounts = createRuntimeManagedAgentAccountAccess(() =>
+    this.requireServices()
+  )
   private commitMessageAgentEnvironment: CommitMessageAgentEnvironmentResolvers | null = null
   private readonly hostAccounts = new HostAccountLaunchEnvState(() => this.services !== null)
 
@@ -80,9 +84,8 @@ export class RuntimeAccountController {
     this.commitMessageAgentEnvironment = resolvers
   }
 
-  getCommitMessageAgentEnvironment(): CommitMessageAgentEnvironmentResolvers | undefined {
-    return this.commitMessageAgentEnvironment ?? this.hostAccounts.commitMessageAgentEnvironment()
-  }
+  getCommitMessageAgentEnvironment = (): CommitMessageAgentEnvironmentResolvers | undefined =>
+    this.commitMessageAgentEnvironment ?? this.hostAccounts.commitMessageAgentEnvironment()
 
   /** Refused where this host has account services of its own: they already decide every launch. */
   setHostLaunchEnv(launchEnv: HostAccountLaunchEnv): void {
@@ -109,9 +112,7 @@ export class RuntimeAccountController {
   }
 
   /** Null where the desktop that owns this host's accounts polls usage instead (a WSL host). */
-  usageRateLimits(): RateLimitService | null {
-    return this.services?.rateLimits ?? null
-  }
+  usageRateLimits = (): RateLimitService | null => this.services?.rateLimits ?? null
 
   /** Refuses where no poller would read a saved key, so a save is never reported for nothing. */
   requireUsageRateLimits(): RateLimitService {

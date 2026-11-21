@@ -17,6 +17,7 @@ import {
 } from '../structured/launch/claude-config-dir-pin'
 import { buildClaudeChildProcessEnv } from '../child-process/claude-child-process-environment'
 import type { ClaudeStructuredLaunch } from '../structured/launch/claude-structured-launch-resolution'
+import { prepareClaudeLaunchAccount } from '../structured/launch/claude-launch-account'
 import { resolve } from 'node:path'
 
 export type ClaudeNamingInputs = {
@@ -44,7 +45,7 @@ export function claudeNamingInvocation(
       ? Promise.resolve(pinned)
       : sources.resolveWorkspacePath(record.location.workspaceId)
     const router = getClaudeProfileRouter()
-    const policy = router?.preparation()
+    const policy = record.accountBinding ? undefined : router?.preparation()
     const systemHome = router?.systemDefaultHome()
     const savedHome = requireLegacyAgentSessionAccountHome(record.accountHome).path
     return (async () => {
@@ -63,11 +64,13 @@ export function claudeNamingInvocation(
             : {})
       })
       const env = claudeChildEnv(resolved, undefined, { runtimeOnPath: false })
-      const home = policy
-        ? policy.provenance === 'system'
-          ? env.CLAUDE_CONFIG_DIR?.trim() || systemHome || policy.configDir
-          : policy.configDir
-        : savedHome
+      const home = record.accountBinding
+        ? (await prepareClaudeLaunchAccount(router, env, savedHome, record.accountBinding)).home
+        : policy
+          ? policy.provenance === 'system'
+            ? env.CLAUDE_CONFIG_DIR?.trim() || systemHome || policy.configDir
+            : policy.configDir
+          : savedHome
       if (policy) {
         applyClaudeEnvPatch(env, policy.envPatch)
       }

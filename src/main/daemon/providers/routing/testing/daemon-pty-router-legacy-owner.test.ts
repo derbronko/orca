@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { createAdapter } from './daemon-pty-router-test-fixture'
 import { DaemonPtyRouter } from '../daemon-pty-router'
 import { TerminalSessionOwnerUnverifiedError } from '../../../protocol/daemon-errors'
+import { ACCOUNT_BINDING_RETENTION_DAEMON_PROTOCOL_VERSION } from '../../../protocol/daemon-protocol-version'
 
 const SPAWN = { cols: 80, rows: 24 }
 // Keep the fake PID outside the real process range.
@@ -52,5 +53,50 @@ describe('DaemonPtyRouter keeps live sessions on their older daemon', () => {
       TerminalSessionOwnerUnverifiedError
     )
     expect(current.spawn).not.toHaveBeenCalled()
+  })
+
+  it('refuses a bound launch routed to a daemon that cannot retain the account binding', async () => {
+    const current = createAdapter(
+      'current',
+      [],
+      undefined,
+      ACCOUNT_BINDING_RETENTION_DAEMON_PROTOCOL_VERSION
+    )
+    const legacy = createAdapter('legacy', ['bound-session'], undefined, 56)
+    const router = new DaemonPtyRouter({ current, legacy: [legacy] })
+    await router.discoverLegacySessions()
+
+    await expect(
+      router.spawn({
+        ...SPAWN,
+        sessionId: 'bound-session',
+        requiresAccountBindingRetention: true
+      })
+    ).rejects.toThrow(/account binding/i)
+
+    expect(legacy.spawn).not.toHaveBeenCalled()
+    expect(current.spawn).not.toHaveBeenCalled()
+  })
+
+  it('allows a bound launch on the retention-capable current daemon and keeps legacy unbound routing', async () => {
+    const current = createAdapter(
+      'current',
+      [],
+      undefined,
+      ACCOUNT_BINDING_RETENTION_DAEMON_PROTOCOL_VERSION
+    )
+    const legacy = createAdapter('legacy', ['legacy-session'], undefined, 56)
+    const router = new DaemonPtyRouter({ current, legacy: [legacy] })
+    await router.discoverLegacySessions()
+
+    await router.spawn({ cols: 80, rows: 24, requiresAccountBindingRetention: true })
+    await router.spawn({ ...SPAWN, sessionId: 'legacy-session' })
+
+    expect(current.spawn).toHaveBeenCalledWith(
+      expect.objectContaining({ requiresAccountBindingRetention: true })
+    )
+    expect(legacy.spawn).toHaveBeenCalledWith(
+      expect.objectContaining({ sessionId: 'legacy-session' })
+    )
   })
 })

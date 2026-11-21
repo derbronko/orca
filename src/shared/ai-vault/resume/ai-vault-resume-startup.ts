@@ -1,7 +1,9 @@
 // Share desktop/mobile saved-conversation startups using host platform, actual shell and launch settings.
 
 import { isAntigravityReferenceSession } from '../../antigravity-session-origin'
-import type { AiVaultAgent, AiVaultSession } from '../contracts/ai-vault-types'
+import type { AiVaultSession } from '../contracts/ai-vault-types'
+import type { AiVaultResumeCommandSession } from './ai-vault-resume-account-binding'
+import { retainResumeAccountBinding } from './ai-vault-resume-account-binding'
 import {
   buildAiVaultResumeCommand,
   buildAiVaultResumeShellCommand,
@@ -20,30 +22,23 @@ import {
 } from '../../agent-launch/choices/tui-agent-launch-defaults'
 import { buildAgentResumeStartupPlan } from '../../agent-launch/startup/tui-agent-resume-startup'
 import {
-  quoteStartupArg,
   resolveStartupShell,
   tokenizeStartupCommand,
   type AgentStartupShell
 } from '../../agent-launch/startup/tui-agent-startup-shell'
 import {
   getTuiAgentLaunchCommand,
-  isTuiAgent,
   TUI_AGENT_CONFIG
 } from '../../agent-launch/catalog/tui-agent-config'
-import { findOptionOccurrence } from '../../command-option-occurrence'
 import { assertOpenCodeCopyUsesLocalStore } from '../../opencode-launch-command'
 import { CLI_CONVERSATION_ADOPTING_AGENTS } from '../../structured-agent-cli-conversation-adoption'
 import type { GlobalSettings } from '../../global-settings-types'
 import { parseWslUncPath } from '../../wsl-paths'
 import { managedDataAccountResumeEnv } from '../../managed-data-account-resume'
 
-export type AiVaultResumeCommandSession = Pick<
-  AiVaultSession,
-  'agent' | 'sessionId' | 'cwd' | 'codexHome'
-> &
-  Partial<
-    Pick<AiVaultSession, 'executionHostId' | 'executionHostPlatform' | 'resumeCommand' | 'filePath'>
-  >
+export { retainResumeAccountBinding } from './ai-vault-resume-account-binding'
+export type { AiVaultResumeCommandSession } from './ai-vault-resume-account-binding'
+export { resolveAiVaultCopiedSessionAgentArgs } from './ai-vault-resume-copied-session-args'
 
 export type AiVaultResumeStartup = {
   agent?: AiVaultSession['agent']
@@ -67,7 +62,7 @@ export type AiVaultResumeHostShell = {
   liveShell: AgentStartupShell | undefined
 }
 
-type AiVaultResumeStartupArgs = {
+export type AiVaultResumeStartupArgs = {
   session: AiVaultResumeCommandSession
   host: AiVaultResumeHostShell
   settings: AiVaultResumeLaunchSettings | null | undefined
@@ -183,7 +178,7 @@ export function buildAiVaultLocalResumeStartup(
         ...(startupPlan.env ? { env: startupPlan.env } : {}),
         ...realHomeCodexResumeEnvDeletion(session),
         ...startupCwd,
-        launchConfig: startupPlan.launchConfig,
+        launchConfig: retainResumeAccountBinding(startupPlan.launchConfig, session.accountBinding),
         providerSession: localProviderSession
       }
     }
@@ -204,7 +199,15 @@ export function buildAiVaultLocalResumeStartup(
       clearEnvNames
     }),
     ...startupCwd,
-    ...realHomeCodexResumeEnvDeletion(session)
+    ...realHomeCodexResumeEnvDeletion(session),
+    ...(session.accountBinding
+      ? {
+          launchConfig: retainResumeAccountBinding(
+            { agentArgs: '', agentEnv: {} },
+            session.accountBinding
+          )
+        }
+      : {})
   }
 }
 
@@ -252,56 +255,8 @@ export function buildAiVaultForkStartup(
     ...(plan.env ? { env: plan.env } : {}),
     ...realHomeCodexResumeEnvDeletion(session),
     ...(session.cwd ? { cwd: session.cwd } : {}),
-    launchConfig: plan.launchConfig
+    launchConfig: retainResumeAccountBinding(plan.launchConfig, session.accountBinding)
   }
-}
-
-/** The agent arguments a copied conversation opens with: the source chat's launch mode, then the
- *  configured arguments. */
-export function resolveAiVaultCopiedSessionAgentArgs(
-  args: AiVaultResumeStartupArgs & { sourceAgent: AiVaultAgent }
-): string {
-  const { session, settings, sourceAgent } = args
-  const { platform, liveShell } = args.host
-  const shell = resolveStartupShell(platform, liveShell)
-  const configuredArgs = isTuiAgent(session.agent)
-    ? resolveTuiAgentLaunchRawArgs(
-        session.agent,
-        settings,
-        undefined,
-        resolveStartupShell(platform, liveShell)
-      )
-    : ''
-  const configured = tokenizeStartupCommand(configuredArgs, shell)
-  if (!configured.ok) {
-    throw new Error('This session cannot be opened in the CLI.')
-  }
-  const commandOverride =
-    args.commandOverride?.trim() || settings?.agentCmdOverrides?.[session.agent]?.trim()
-  const mode =
-    sourceAgent !== session.agent &&
-    isTuiAgent(sourceAgent) &&
-    !commandOverride &&
-    !findOptionOccurrence(configured.tokens, ['--standalone'], true)
-      ? tokenizeStartupCommand(
-          getTuiAgentLaunchCommand(TUI_AGENT_CONFIG[sourceAgent], platform),
-          shell
-        )
-      : null
-  if (mode && !mode.ok) {
-    throw new Error('This session cannot be opened in the CLI.')
-  }
-  return [
-    mode?.ok
-      ? mode.tokens
-          .slice(1)
-          .map((token) => quoteStartupArg(token, shell))
-          .join(' ')
-      : '',
-    configuredArgs
-  ]
-    .filter(Boolean)
-    .join(' ')
 }
 
 /** Check every possible chat-owning CLI before copying: OpenCode copies live in the local store and launch args must not redirect them. */

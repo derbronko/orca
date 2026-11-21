@@ -15,6 +15,11 @@ import type { OrcaWorkspaceLayout } from '../orca-workspace-layout'
 import type { DiffComment, MobileDiffReviewState } from '../diff-comment-types'
 import type { SmartTier } from '../sidebar-list/sorting/sort-stamps'
 import type { ExternalConversationLink } from '../external-conversation-link'
+import type {
+  AgentAccountPreferences,
+  AgentAccountPreferencePatch
+} from '../agent-accounts/agent-account-preference'
+import type { WorkspaceAttachmentMutation } from '../workspace-attachments/workspace-attachment-mutation'
 
 export type ArchivedCheckout = {
   branch: string
@@ -24,6 +29,8 @@ export type ArchivedCheckout = {
 }
 
 export type WorktreeMeta = {
+  /** Account defaults scoped to this exact workspace instance. */
+  agentAccounts?: AgentAccountPreferences
   /** Immutable per-workspace-instance ID used to reject stale lineage after path reuse. */
   instanceId?: string
   /** See Worktree.projectId. Persisted for project-first workspace ownership. */
@@ -112,3 +119,8 @@ export type WorktreeMeta = {
   /** System-owned connector threads whose agents run here; never published on `Worktree`. */
   externalConversations?: ExternalConversationLink[]
 }
+
+/** Write shape for worktree metadata. Null clears one account override; it is never persisted in WorktreeMeta. */
+export type WorktreeMetaUpdate = Omit<Partial<WorktreeMeta>, 'agentAccounts'> & {
+  agentAccounts?: AgentAccountPreferencePatch
+} & WorkspaceAttachmentMutation

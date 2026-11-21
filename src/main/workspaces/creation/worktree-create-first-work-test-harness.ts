@@ -2,6 +2,7 @@ import { vi, type Mock } from 'vitest'
 import type { CreateWorktreeArgs } from '../../../shared/worktree/create-types'
 import type { Worktree } from '../../../shared/worktree/types'
 import type { WorktreeMeta } from '../../../shared/worktree/meta-types'
+import { mergeAgentAccountPreferencePatch } from '../../../shared/agent-accounts/agent-account-preference'
 import { getDefaultSettings } from '../../../shared/constants'
 import { firstWorkRenameDeps } from '../../agent-hooks/first-work/first-work-rename-runtime'
 import {
@@ -71,7 +72,17 @@ export async function renameCreatedWorktreeOnFirstWork(
       getRepo: () => repo,
       getRepos: () => [repo],
       getWorktreeMeta: () => meta,
-      setWorktreeMeta: (_target, updates) => (meta = { ...meta, ...updates }),
+      setWorktreeMeta: (_target, updates) => {
+        const { agentAccounts: patch, ...metaUpdates } = updates
+        meta = {
+          ...meta,
+          ...metaUpdates,
+          ...(patch
+            ? { agentAccounts: mergeAgentAccountPreferencePatch(meta.agentAccounts, patch) }
+            : {})
+        }
+        return meta
+      },
       getFolderWorkspace: () => undefined,
       updateFolderWorkspace: () => null,
       getWorktreeIdForTab: () => worktree.id

@@ -45,10 +45,24 @@ export class ClaudeRuntimeAuthService {
   }
 
   prepareForClaudeLaunch(
-    target?: ClaudeAccountSelectionTarget
+    target?: ClaudeAccountSelectionTarget,
+    options?: { accountId?: string }
   ): Promise<ClaudeRuntimeAuthPreparation> {
+    if (options?.accountId) {
+      if (target?.runtime === 'wsl') {
+        return Promise.reject(new Error('Explicit Claude accounts are not supported on WSL.'))
+      }
+      return this.router.prepareExplicitAccountForLaunch(options.accountId)
+    }
     const wsl = this.wslRouteFor(target)
     return wsl ? wsl.router.prepareLaunch(wsl.distro) : this.router.prepareLaunch()
+  }
+
+  resolveManagedAccountHome(accountId: string, target?: ClaudeAccountSelectionTarget): string {
+    if (target?.runtime === 'wsl') {
+      throw new Error('Explicit Claude accounts are not supported on WSL.')
+    }
+    return this.router.resolveExplicitAccountHome(accountId)
   }
 
   async prepareForRateLimitFetch(

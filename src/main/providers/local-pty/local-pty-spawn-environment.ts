@@ -1,4 +1,5 @@
 import { mergeGitConfigEnvProtocol } from '../../../shared/git/commands/git-credential-prompt-env'
+import { deleteEnvironmentVariables } from '../../../shared/environment-overlay'
 import { restoreManagedDataAccountEnvironment } from '../../../shared/managed-data-account-environment'
 import {
   ORCA_IMAGE_PROTOCOL_ENV,
@@ -76,9 +77,7 @@ export function buildInheritedLocalPtyEnvironment(
   removeChromiumDisabledSessionBus(spawnEnv)
   removeInheritedNoColor(spawnEnv)
   stripInheritedAgentSessionEnv(spawnEnv, { launchEnv: explicitEnv, envToDelete })
-  for (const key of envToDelete) {
-    delete spawnEnv[key]
-  }
+  deleteEnvironmentVariables(spawnEnv, envToDelete, process.platform)
   if (explicitEnv?.TERM) {
     spawnEnv.TERM = explicitEnv.TERM
   }
@@ -99,9 +98,7 @@ export function enforceLocalPtySpawnEnvironmentOverrides(
     launchEnv: spawn.env,
     envToDelete: spawn.envToDelete
   })
-  for (const key of spawn.envToDelete ?? []) {
-    delete finalEnv[key]
-  }
+  deleteEnvironmentVariables(finalEnv, spawn.envToDelete, process.platform)
   if (spawn.env?.TERM) {
     finalEnv.TERM = spawn.env.TERM
   }

@@ -1,5 +1,6 @@
 import { LOCAL_EXECUTION_HOST_ID } from './execution-host'
 import type { Project, ProjectHostSetup } from './project-types'
+import { normalizeAgentAccountPreferences } from './agent-accounts/agent-account-preference'
 
 /** Normalize persisted/mixed-version Project/ProjectHostSetup rows at ingress; null/missing strings otherwise crash trim consumers
  * (3bcc5be3). Coerce only: keep row membership, optional-key presence and valid references for selector/useMemo stability.
@@ -28,6 +29,7 @@ function timestampValue(value: unknown): number {
 
 export function normalizeProjectHostSetupRow(setup: ProjectHostSetup): ProjectHostSetup {
   const row: Record<string, unknown> = isRecord(setup) ? setup : {}
+  const agentAccounts = normalizeAgentAccountPreferences(row.agentAccounts)
   const needsRepair =
     !isString(row.id) ||
     !isString(row.projectId) ||
@@ -36,7 +38,10 @@ export function normalizeProjectHostSetupRow(setup: ProjectHostSetup): ProjectHo
     !isString(row.path) ||
     !isString(row.displayName) ||
     !isTimestamp(row.createdAt) ||
-    !isTimestamp(row.updatedAt)
+    !isTimestamp(row.updatedAt) ||
+    (row.agentAccounts !== undefined &&
+      (agentAccounts === undefined ||
+        JSON.stringify(row.agentAccounts) !== JSON.stringify(agentAccounts)))
   if (!needsRepair) {
     return setup
   }
@@ -55,7 +60,8 @@ export function normalizeProjectHostSetupRow(setup: ProjectHostSetup): ProjectHo
       ? 'legacy-repo'
       : row.setupMethod) as ProjectHostSetup['setupMethod'],
     createdAt: timestampValue(row.createdAt),
-    updatedAt: timestampValue(row.updatedAt)
+    updatedAt: timestampValue(row.updatedAt),
+    ...(agentAccounts !== undefined ? { agentAccounts } : {})
   }
 }
 

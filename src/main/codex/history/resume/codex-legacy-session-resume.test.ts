@@ -85,6 +85,50 @@ describe('prepareLegacySharedCodexSessionResume', () => {
     expect(readFileSync(targetRolloutPath(), 'utf-8')).toBe('{"different":true}\n')
   })
 
+  it('materializes a bound chat fork into its assigned home instead of the global account', async () => {
+    const sourceHome = join(root, 'codex-accounts', 'source', 'home')
+    const assignedHome = join(root, 'codex-accounts', 'assigned', 'home')
+    const selectedGlobalHome = join(root, 'codex-accounts', 'global', 'home')
+    const relative = join(
+      'sessions',
+      '2026',
+      '07',
+      '20',
+      'rollout-2026-07-20T12-00-00-session.jsonl'
+    )
+    const sourcePath = join(sourceHome, relative)
+    const wrongTargetPath = join(selectedGlobalHome, relative)
+    mkdirSync(join(sourcePath, '..'), { recursive: true })
+    mkdirSync(join(wrongTargetPath, '..'), { recursive: true })
+    writeFileSync(sourcePath, '{"source":"chat-home"}\n', 'utf-8')
+    writeFileSync(wrongTargetPath, '{"source":"global-account"}\n', 'utf-8')
+
+    const result = await prepareLegacySharedCodexSessionResume(
+      {
+        agent: 'codex',
+        sessionId: 'session-a',
+        filePath: sourcePath,
+        codexHome: sourceHome,
+        executionHostId: 'local',
+        fork: true,
+        accountBinding: { provider: 'codex', accountId: 'assigned-account' }
+      },
+      {
+        isHostSystemDefaultRealHomeSelected: () => false,
+        getSelectedHostAccountCodexHomePath: () => selectedGlobalHome,
+        resolveManagedAccountHome: (accountId) => {
+          expect(accountId).toBe('assigned-account')
+          return assignedHome
+        },
+        systemCodexHomePath: systemHome
+      }
+    )
+
+    expect(result).toEqual({ useRealCodexHome: false, substituteCodexHome: assignedHome })
+    expect(readFileSync(join(assignedHome, relative), 'utf-8')).toBe('{"source":"chat-home"}\n')
+    expect(readFileSync(wrongTargetPath, 'utf-8')).toBe('{"source":"global-account"}\n')
+  })
+
   function prepare() {
     return prepareLegacySharedCodexSessionResume(legacyArgs(), options())
   }

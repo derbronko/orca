@@ -130,6 +130,51 @@ describe('a record row older builds wrote', () => {
   })
 })
 
+describe('versioned managed account bindings', () => {
+  const accountBinding = { provider: 'claude', accountId: 'managed-account-a' } as const
+
+  it('round-trips a v3 binding while leaving the legacy v2 row unchanged', () => {
+    const v2 = JSON.parse(STORED_CLAUDE_ROW)
+    const v3 = { ...v2, schemaVersion: 3, accountBinding }
+    expect(isPersistedAgentSessionRecord(v3)).toBe(true)
+    if (!isPersistedAgentSessionRecord(v3)) {
+      return
+    }
+
+    const decoded = decodePersistedAgentSessionRecord(v3).record
+    expect(decoded).toMatchObject({ schemaVersion: 3, accountBinding })
+    expect(encodeAgentSessionRecord(decoded)).toMatchObject({ schemaVersion: 3, accountBinding })
+  })
+
+  it.each([
+    ['missing binding', {}],
+    ['wrong provider binding', { accountBinding: { provider: 'codex', accountId: 'x' } }],
+    ['malformed binding', { accountBinding: { provider: 'claude', accountId: '' } }]
+  ])('rejects v3 with %s instead of treating it as unbound', (_name, change) => {
+    expect(
+      isPersistedAgentSessionRecord({
+        ...JSON.parse(STORED_CLAUDE_ROW),
+        schemaVersion: 3,
+        ...change
+      })
+    ).toBe(false)
+  })
+
+  it('retains v3 through founding identity fields and lease transitions', () => {
+    const v3 = {
+      ...agentSessionRecordFixture(),
+      schemaVersion: 3 as const,
+      accountBinding
+    }
+    const decoded = decodePersistedAgentSessionRecord(encodeAgentSessionRecord(v3)).record
+    const renewed = {
+      ...decoded,
+      lease: { ...decoded.lease, lastRenewedAt: decoded.lease.lastRenewedAt + 1 }
+    }
+    expect(encodeAgentSessionRecord(renewed)).toMatchObject({ schemaVersion: 3, accountBinding })
+  })
+})
+
 describe('what this build writes', () => {
   it('keeps the persisted key and root strings older builds derived', () => {
     // Fork seeds, superseded creations and resume offers store these; a new spelling strands them.

@@ -13,6 +13,7 @@ import { NativeChatResumeInCliButton } from './NativeChatResumeInCliButton'
 import { NativeChatSettingsButton } from '../../appearance/NativeChatSettingsButton'
 import type { NativeChatStructuredViewProps } from '../../native-chat-view-types'
 import type { NativeChatHandOff } from './use-native-chat-hand-off'
+import type { ManagedAgentAccountRef } from '../../../../../../shared/agent-accounts/agent-account-preference'
 
 const HEADER_STYLE: React.CSSProperties & Record<'--orca-pane-title-bg', string> = {
   '--orca-pane-title-bg': 'var(--chat-canvas)'
@@ -27,7 +28,8 @@ export function NativeChatPaneHeader({
   nativeChat,
   focused,
   colorScheme,
-  handOff
+  handOff,
+  accountBinding
 }: {
   tabId: string
   worktreeId: string
@@ -36,6 +38,7 @@ export function NativeChatPaneHeader({
   focused: boolean
   colorScheme: React.CSSProperties['colorScheme']
   handOff?: NativeChatHeaderHandOff
+  accountBinding?: ManagedAgentAccountRef
 }): React.JSX.Element {
   const t = useTranslate()
   const actions = useStructuredChatPaneActions(tabId, worktreeId, groupId)
@@ -47,6 +50,11 @@ export function NativeChatPaneHeader({
     'components.agentSessionContinuation.handOffToAnotherAgent',
     'Hand Off to Another Agent'
   )
+  const assignedAccountLabel = accountBinding
+    ? t('agentAccounts.assignedTo', 'Assigned account: {{value0}}', {
+        value0: accountBinding.accountId
+      })
+    : null
   return (
     <div
       className="pane-title-bar z-20"
@@ -55,6 +63,15 @@ export function NativeChatPaneHeader({
       data-pane-title-surface={light ? 'light' : 'dark'}
       style={HEADER_STYLE}
     >
+      {assignedAccountLabel ? (
+        <span
+          className="max-w-48 truncate px-2 text-2xs text-muted-foreground"
+          title={assignedAccountLabel}
+          aria-label={assignedAccountLabel}
+        >
+          {assignedAccountLabel}
+        </span>
+      ) : null}
       <div className="pane-title-actions ml-auto flex shrink-0 items-center gap-0">
         {handOff && focused ? (
           <Tooltip>
@@ -141,7 +158,8 @@ export function nativeChatPaneHeader(
   >,
   worktreeId: string | null,
   colorScheme: React.CSSProperties['colorScheme'],
-  handOff?: NativeChatHandOff
+  handOff?: NativeChatHandOff,
+  accountBinding?: ManagedAgentAccountRef
 ): React.JSX.Element | null {
   return view.isVisible && worktreeId && view.groupId && !view.contextMenuActions ? (
     <NativeChatPaneHeader
@@ -156,6 +174,7 @@ export function nativeChatPaneHeader(
           ? { open: handOff.open, disabled: handOff.preparing || handOff.dialog !== null }
           : undefined
       }
+      accountBinding={accountBinding}
     />
   ) : null
 }

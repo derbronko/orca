@@ -14,12 +14,13 @@ export async function prepareCodexAdoption(
   source: StructuredAgentSessionAdoption,
   providerSessionId: string,
   prepare: NativeCodexResumePreparation | undefined,
-  recognizedHomes: readonly AgentSessionAccountHome[]
+  recognizedHomes: readonly AgentSessionAccountHome[],
+  nativeSystemHomeOverride?: string
 ): Promise<StructuredAgentSessionAdoption> {
   if (!prepare || !isLegacyAgentSessionAccountHome(source.accountHome)) {
     return source
   }
-  const nativeSystemHomePath = getSystemCodexHomePath()
+  const nativeSystemHomePath = nativeSystemHomeOverride ?? getSystemCodexHomePath()
   const result = await prepare(
     {
       agent: 'codex',

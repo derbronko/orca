@@ -6,6 +6,7 @@ import { WorkspaceAttachmentsSchema } from '../../../shared/workspace-attachment
 import { isWorkspaceLinkedItemSourceContextMatch } from '../../../shared/workspace-attachments/workspace-linked-item-source-context'
 import { DiffCommentSchema } from '../../../shared/diff-comment-schema'
 import { normalizeExecutionHostId } from '../../../shared/execution-host'
+import { AgentAccountPreferencePatchSchema } from '../../../shared/agent-accounts/agent-account-preference'
 
 export const ProjectGroupCreateArgs = z.object({
   name: z.string().min(1),
@@ -113,7 +114,8 @@ export const ProjectHostSetupUpdateIpcArgs = z.object({
       .enum(['legacy-repo', 'imported-existing-folder', 'cloned', 'provisioned'])
       .optional(),
     gitUsername: z.string().optional(),
-    kind: z.enum(['git', 'folder']).optional()
+    kind: z.enum(['git', 'folder']).optional(),
+    agentAccounts: AgentAccountPreferencePatchSchema.optional()
   })
 })
 

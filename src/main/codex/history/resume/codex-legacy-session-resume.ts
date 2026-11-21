@@ -11,6 +11,7 @@ import {
 import { LOCAL_EXECUTION_HOST_ID } from '../../../../shared/execution-host'
 import { normalizeRuntimePathForComparison } from '../../../../shared/cross-platform-path'
 import { parseWslUncPath } from '../../../../shared/wsl-paths'
+import { getSystemCodexHomePath } from '../../configuration/homes/codex-home-paths'
 import {
   appendCodexSessionHealAuditRecord,
   createCodexSessionBackfillAuditWriter
@@ -33,10 +34,33 @@ export async function prepareLegacySharedCodexSessionResume(
   options: {
     isHostSystemDefaultRealHomeSelected: () => boolean
     getSelectedHostAccountCodexHomePath?: () => string | null
+    resolveManagedAccountHome?: (accountId: string) => string
     legacyCodexHomePath?: string
     systemCodexHomePath?: string
   }
 ): Promise<AiVaultPrepareSessionResumeResult> {
+  if (args.accountBinding?.provider === 'codex') {
+    if (
+      args.agent !== 'codex' ||
+      !args.fork ||
+      args.executionHostId !== LOCAL_EXECUTION_HOST_ID ||
+      !args.codexHome ||
+      parseWslUncPath(args.codexHome) !== null
+    ) {
+      throw new Error('A bound Codex chat fork requires a local, readable source home.')
+    }
+    const assignedHome = options.resolveManagedAccountHome?.(args.accountBinding.accountId)
+    if (!assignedHome) {
+      throw new Error('The assigned Codex account home is unavailable for this fork.')
+    }
+    await prepareCodexAccountRestartResume({
+      sourceHome: args.codexHome,
+      transcriptPath: args.filePath,
+      targetHome: assignedHome,
+      systemCodexHomePath: options.systemCodexHomePath ?? getSystemCodexHomePath()
+    })
+    return { useRealCodexHome: false, substituteCodexHome: assignedHome }
+  }
   const substituteCodexHome = await resolveSelectedAccountCodexHomeForResume(args, options)
   if (substituteCodexHome) {
     return { useRealCodexHome: false, substituteCodexHome }

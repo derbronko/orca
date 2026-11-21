@@ -1,6 +1,7 @@
 import type { PersistedState } from '../../../shared/persisted-state-types'
 import type { ProjectHostSetup, ProjectHostSetupUpdateArgs } from '../../../shared/project-types'
 import type { Repo } from '../../../shared/repo-types'
+import { mergeAgentAccountPreferencePatch } from '../../../shared/agent-accounts/agent-account-preference'
 import type { RepoUpdatePersistenceOperations } from './repo-update-operations'
 
 export type ProjectHostSetupUpdateOperations = {
@@ -49,6 +50,9 @@ export class ProjectHostSetupPersistenceOperations {
     if (updates.kind !== undefined) {
       repoUpdates.kind = updates.kind
     }
+    if (updates.agentAccounts !== undefined) {
+      repoUpdates.agentAccounts = updates.agentAccounts
+    }
     if (updates.setupMethod === 'provisioned') {
       throw new Error('Repo-backed project host setups cannot be marked provisioned.')
     }
@@ -73,6 +77,12 @@ export class ProjectHostSetupPersistenceOperations {
     setup: ProjectHostSetup,
     updates: ProjectHostSetupUpdateArgs['updates']
   ): ProjectHostSetup {
+    if (updates.agentAccounts !== undefined) {
+      setup.agentAccounts = mergeAgentAccountPreferencePatch(
+        setup.agentAccounts,
+        updates.agentAccounts
+      )
+    }
     if (updates.displayName !== undefined) {
       setup.displayName = updates.displayName.trim() || setup.displayName
     }

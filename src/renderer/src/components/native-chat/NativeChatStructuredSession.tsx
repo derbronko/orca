@@ -9,7 +9,6 @@ import { cn } from '@/lib/class-names'
 import { NATIVE_CHAT_APPEARANCE_ROOT_CLASS } from '@/components/native-chat/appearance/native-chat-appearance-style'
 import { useNativeChatStoreAppearanceStyle } from '@/components/native-chat/appearance/use-native-chat-store-appearance-style'
 import { useRef, useState } from 'react'
-import { structuredAgentSessionPaneKey } from '../../../../shared/agent-session/view/structured-agent-session-projection'
 import { useStructuredChatLiveSession } from '@/components/native-chat/session/structured/use-structured-chat-live-session'
 import { NativeChatStructuredPromptCard } from '@/components/native-chat/prompts/NativeChatStructuredPromptCard'
 import { NativeChatComposer } from '@/components/native-chat/composer/NativeChatComposer'
@@ -33,14 +32,11 @@ import { useNativeChatRootInputRouting } from '@/components/native-chat/composer
 import { useNativeChatFontSize } from '@/components/native-chat/appearance/use-native-chat-font-size'
 import { useNativeChatFind } from '@/components/native-chat/viewport/find/use-native-chat-find'
 import { NativeChatFindBar } from '@/components/native-chat/viewport/find/NativeChatFindBar'
-import { nativeChatQueueFollowUps } from '../../../../shared/native-chat/input/native-chat-follow-up-behavior'
 import { LinkActionPopover } from '@/components/link-actions/LinkActionPopover'
 import { useNativeChatLinkActions } from '@/components/native-chat/links/actions/use-native-chat-link-actions'
 import { NativeChatLinkClickContext } from '@/components/native-chat/links/actions/native-chat-link-click-context'
-import { useNativeChatFileLinkContext } from '@/components/native-chat/links/actions/use-native-chat-file-link-context'
-import { useRecheckNativeChatFileLinksWhenTurnEnds } from '@/components/native-chat/links/actions/use-native-chat-file-link-existence'
-import { useNativeChatTabOwnerWorktreeId } from '@/components/native-chat/pane/ownership/use-native-chat-tab-owner'
-import { useStructuredAgentSession } from '@/components/native-chat/session/structured/use-structured-agent-session'
+import { useNativeChatStructuredPaneContext } from '@/components/native-chat/session/status/use-native-chat-structured-pane-context'
+import { useNativeChatStructuredSessionController } from '@/components/native-chat/session/structured/use-native-chat-structured-session-controller'
 import { useNativeChatImageRuntimeContext } from '@/components/native-chat/media/images/native-chat-image-runtime-context'
 import { useStructuredNativeChatPaneCommands } from '@/components/native-chat/pane/actions/use-structured-native-chat-pane-commands'
 import type { NativeChatStructuredViewProps } from '@/components/native-chat/native-chat-view-types'
@@ -51,21 +47,15 @@ import {
   useNativeChatInstallSlot
 } from '@/components/native-chat/host-access/NativeChatInstallSlot'
 import { useNativeChatComposerError } from '@/components/native-chat/composer/controls/use-native-chat-composer-notice'
-import { useNativeChatProvisionalLaunch } from '@/components/native-chat/host-access/use-native-chat-provisional-launch'
-import { useStructuredAgentSessionHostExecution } from '@/components/native-chat/session/status/structured-agent-session-status-hooks'
 import { useNativeChatRewindHost } from '@/components/native-chat/messages/actions/use-native-chat-rewind-host'
 import { NativeChatRowActionsProvider } from '@/components/native-chat/messages/actions/NativeChatRowActionsProvider'
 import { useNativeChatPaneFork } from '@/components/native-chat/messages/actions/use-native-chat-fork'
 import { NativeChatQueuedMessageList } from '@/components/native-chat/queue/NativeChatQueuedMessageList'
-import {
-  cancelStructuredPrompt,
-  nativeChatStructuredStopControls
-} from '@/components/native-chat/session/structured/writes/native-chat-structured-stop-controls'
-import { useAppStore } from '@/store/index'
+import { cancelStructuredPrompt } from '@/components/native-chat/session/structured/writes/native-chat-structured-stop-controls'
 import { structuredAgentLabel } from '@/lib/agent-session/launch/structured-agent-session-launch-label'
 import { useNativeChatStructuredComposerTransport } from '@/components/native-chat/composer/submit/use-native-chat-structured-composer-transport'
 import { NativeChatStructuredComposerTabStrips } from '@/components/native-chat/pane/actions/NativeChatStructuredComposerTabStrips'
-import { nativeChatPaneHeader } from '@/components/native-chat/pane/actions/NativeChatPaneHeader'
+import { useNativeChatStructuredAccountHeader } from '@/components/native-chat/pane/actions/use-native-chat-structured-account-header'
 import { structuredAgentSessionReadFailureNotice } from '@/components/native-chat/messages/notices/structured-agent-session-read-failure-notice'
 import { useStructuredAgentSessionDeliveryNotices } from '@/components/native-chat/session/structured/delivery/use-structured-agent-session-delivery-notices'
 import { dispatchWasWithdrawn } from '../../../../shared/agent-session/requests/structured-agent-session-dispatch-rejection'
@@ -82,34 +72,25 @@ import {
 } from '@/components/native-chat/worker-approvals/NativeChatWorkerApprovals'
 
 export function NativeChatStructuredSession(props: Omit<NativeChatStructuredViewProps, 'mode'>) {
-  const ownerWorktreeId = useNativeChatTabOwnerWorktreeId(props.tabId)
-  const fileLinkContext = useNativeChatFileLinkContext(props.tabId)
-  const provisionalLaunch = useNativeChatProvisionalLaunch(ownerWorktreeId, props.sessionId)
-  // The host's own word on whether the provider child has answered startup yet.
-  const hostExecution = useStructuredAgentSessionHostExecution(props.sessionId, props.target)
-  const paneKey = structuredAgentSessionPaneKey(props.tabId, props.sessionId)
-  // Chat-wide preference; an alternate send flips it for one message.
-  const queueFollowUps = useAppStore((store) => nativeChatQueueFollowUps(store.settings))
+  const {
+    ownerWorktreeId,
+    fileLinkContext,
+    provisionalLaunch,
+    hostExecution,
+    paneKey,
+    queueFollowUps
+  } = useNativeChatStructuredPaneContext(props)
   const composerRef = useRef<NativeChatComposerHandle>(null)
   // Paste target while a question card replaces the composer.
   const questionAnswerInputRef = useRef<HTMLTextAreaElement>(null)
   const { rewindHost, focusComposer } = useNativeChatRewindHost(props, composerRef)
-  const controller = useStructuredAgentSession({
-    ...props,
-    // Why: Stop and a queued card's Edit give text back to the conversation's draft, as the composer keeps it.
-    composerScopeKey: structuredAgentSessionDraftScopeKey(props.sessionId),
+  const { controller, stopControls } = useNativeChatStructuredSessionController({
+    props,
     queueFollowUps,
-    hostStopping: hostExecution.stopping,
-    hostOptionStamp: hostExecution.optionStamp,
-    providerStarting: hostExecution.phase === 'starting',
-    // A start's own verdict (a signed-out agent) exists only once that start is proven.
-    providerRunning: hostExecution.phase === 'ready',
-    rewind: rewindHost,
-    transportEnabled: provisionalLaunch.transportEnabled,
-    ...(provisionalLaunch.launch ? { launch: provisionalLaunch.launch } : {})
+    hostExecution,
+    provisionalLaunch,
+    rewind: rewindHost
   })
-  useRecheckNativeChatFileLinksWhenTurnEnds(controller.isWorking)
-  const stopControls = nativeChatStructuredStopControls(controller, hostExecution.stopping)
   const { composerError, reportComposerError } = useNativeChatComposerError(
     controller.commandRefusalCauses
   )
@@ -172,6 +153,12 @@ export function NativeChatStructuredSession(props: Omit<NativeChatStructuredView
     epoch: controller.epoch,
     focusComposer
   })
+  const paneHeader = useNativeChatStructuredAccountHeader(
+    props,
+    ownerWorktreeId,
+    appearanceStyle.colorScheme,
+    handOff
+  )
   const paneCommands = useStructuredNativeChatPaneCommands({
     pane: props,
     handOff,
@@ -275,7 +262,7 @@ export function NativeChatStructuredSession(props: Omit<NativeChatStructuredView
       style={appearanceStyle}
       data-native-chat-scheme={appearanceStyle.colorScheme}
     >
-      {nativeChatPaneHeader(props, ownerWorktreeId, appearanceStyle.colorScheme, handOff)}
+      {paneHeader}
       <NativeChatCrewFrame
         panel={<NativeChatCrewPanel {...props} composerRef={composerRef} canMention={canMention} />}
       >

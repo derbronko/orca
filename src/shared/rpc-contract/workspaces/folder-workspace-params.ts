@@ -6,6 +6,7 @@ import { isWorkspaceLinkedItemSourceContextMatch } from '../../workspace-attachm
 import { isTuiAgent } from '../../agent-launch/catalog/tui-agent-config'
 import { OptionalFiniteNumber, OptionalString, requiredString } from '../rpc-param-primitives'
 import { DiffCommentSchema } from '../../diff-comment-schema'
+import { AgentAccountPreferencePatchSchema } from '../../agent-accounts/agent-account-preference'
 
 export const FolderWorkspaceLinkedTask = WorkspaceLinkedItemSchema.nullable()
 
@@ -52,6 +53,7 @@ export const FolderWorkspaceUpdate = z.object({
   updates: z
     .object({
       name: OptionalString,
+      agentAccounts: AgentAccountPreferencePatchSchema.optional(),
       folderPath: OptionalString,
       linkedTask: FolderWorkspaceLinkedTask.optional(),
       linkedItems: WorkspaceAttachmentsSchema.optional(),

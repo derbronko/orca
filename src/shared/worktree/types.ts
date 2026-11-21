@@ -9,6 +9,7 @@ import type { BuiltInWorktreeVisibilitySourceId } from '../repo-types'
 import type { WorktreeIdentity } from './identity'
 import type { WorktreeScanFailureKind } from '../worktree-scan-failure'
 import type { SmartTier } from '../sidebar-list/sorting/sort-stamps'
+import type { AgentAccountPreferences } from '../agent-accounts/agent-account-preference'
 
 export type WorkspaceAttachmentOrigin = {
   kind: 'observed'
@@ -94,6 +95,8 @@ export type WorkspaceStatusDefinition = {
 export type Worktree = {
   id: string // `${repoId}::${path}`
   instanceId?: string
+  /** Account defaults scoped to this exact workspace instance. */
+  agentAccounts?: AgentAccountPreferences
   /** Immutable host/instance identity. Optional while legacy rows migrate. */
   identity?: WorktreeIdentity
   repoId: string

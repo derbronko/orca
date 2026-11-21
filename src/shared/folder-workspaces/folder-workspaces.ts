@@ -1,4 +1,5 @@
 import type { FolderWorkspace } from './folder-workspace-types'
+import { normalizeAgentAccountPreferences } from '../agent-accounts/agent-account-preference'
 import type { ProjectGroup } from '../project-group-types'
 import { isTuiAgent } from '../agent-launch/catalog/tui-agent-config'
 import { normalizeStoredTaskSourceContext } from '../work-items/task-source-context'
@@ -56,6 +57,7 @@ export function normalizeFolderWorkspaces(
     const linkedTask = normalizeWorkspaceLinkedItem(raw.linkedTask)
     const linkedTaskSourceContext = normalizeStoredTaskSourceContext(raw.linkedTaskSourceContext)
     const creatorProvenance = normalizeWorkspaceCreatorProvenance(raw.creatorProvenance)
+    const agentAccounts = normalizeAgentAccountPreferences(raw.agentAccounts)
     const orcadRetained = normalizeOrcadRetainedMarker(raw.orcadRetained)
     seen.add(raw.id)
     // Do not persist fetch-time executionHostId: it may name an unowned runtime authority and lacks a generation fence.
@@ -72,6 +74,7 @@ export function normalizeFolderWorkspaces(
             ? null
             : (group.connectionId ?? null),
       ...(creatorProvenance ? { creatorProvenance } : {}),
+      ...(agentAccounts !== undefined ? { agentAccounts } : {}),
       linkedTask,
       ...(raw.linkedItems !== undefined
         ? {

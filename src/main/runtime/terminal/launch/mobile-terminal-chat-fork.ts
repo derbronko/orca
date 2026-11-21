@@ -73,12 +73,20 @@ export function buildMobileTerminalChatFork(args: {
   if (!startup) {
     throw new Error('chat_fork_source_unavailable')
   }
+  const launchConfig = startup.launchConfig
+    ? {
+        ...startup.launchConfig,
+        ...(source.accountBinding ? { accountBinding: source.accountBinding } : {})
+      }
+    : source.accountBinding
+      ? { agentArgs: '', agentEnv: {}, accountBinding: source.accountBinding }
+      : undefined
   return {
     command: startup.command,
     ...(startup.cwd ? { cwd: startup.cwd } : {}),
     ...(startup.env ? { env: startup.env } : {}),
     ...(startup.envToDelete ? { envToDelete: startup.envToDelete } : {}),
-    ...(startup.launchConfig ? { launchConfig: startup.launchConfig } : {}),
+    ...(launchConfig ? { launchConfig } : {}),
     ...(prepared.forkedSession && startup.providerSession
       ? { resumeProviderSession: startup.providerSession }
       : {}),

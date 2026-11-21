@@ -58,23 +58,52 @@ export function createCodexSessionResumeLaunchPreparation(deps: {
     target: CodexAccountSelectionTarget
     launchEnv?: NodeJS.ProcessEnv
     useSelectedAccount?: boolean
+    accountId?: string
   }): Promise<CodexSessionResumePreparation | null> {
+    if (args.accountId && args.target.runtime === 'wsl') {
+      throw new Error('Explicit Codex accounts are not supported on WSL.')
+    }
     const runtimeHome = deps.getRuntimeHome()
+    if (args.accountId && !runtimeHome) {
+      throw new Error('Codex runtime home service is not initialized')
+    }
+    if (args.accountId && !deps.getSettings()) {
+      throw new Error('Codex account settings are unavailable for this session.')
+    }
     if (args.target.runtime === 'wsl' || !runtimeHome || !deps.getSettings()) {
       return null
     }
     const systemHomePath = getSystemCodexHomePath()
-    const trustedHomes = trustedCodexResumeHomes(runtimeHome, systemHomePath)
+    const assignedHome = args.accountId
+      ? runtimeHome.resolveManagedAccountHome(args.accountId)
+      : undefined
+    const trustedHomes = assignedHome
+      ? [assignedHome]
+      : trustedCodexResumeHomes(runtimeHome, systemHomePath)
     // Refuse unreadable selections before provenance matching can choose another account.
-    const selectedAccountCodexHome = runtimeHome.resolveSelectedHostAccountCodexHomePathForResume()
+    const selectedAccountCodexHome = assignedHome
+      ? assignedHome
+      : runtimeHome.resolveSelectedHostAccountCodexHomePathForResume()
     const preparation = await prepareCodexSessionResume({
       sessionId: args.providerSession.id,
       transcriptPath: args.providerSession.transcriptPath,
       trustedCodexHomes: trustedHomes,
       getSelectedAccountCodexHome: () => selectedAccountCodexHome,
       systemCodexHomePath: systemHomePath,
-      sharedRuntimeCodexHomePath: getOrcaManagedCodexHomePath(),
+      sharedRuntimeCodexHomePath: assignedHome ? null : getOrcaManagedCodexHomePath(),
       resolveVerifiedResumeHome: async (sessionSource) => {
+        if (assignedHome) {
+          if (
+            normalizeRuntimePathForComparison(sessionSource.homePath) !==
+            normalizeRuntimePathForComparison(assignedHome)
+          ) {
+            throw new Error(
+              'The saved Codex session does not belong to the assigned Codex account.'
+            )
+          }
+          await prepareCodexPinnedLaunchHome(assignedHome, systemHomePath)
+          return assignedHome
+        }
         let migrated = { useRealCodexHome: false }
         try {
           migrated = await prepareLegacySharedCodexSessionResume(
@@ -115,12 +144,18 @@ export function createCodexSessionResumeLaunchPreparation(deps: {
         return resumeHome
       }
     })
+    if (assignedHome && preparation.outcome !== 'resume') {
+      throw new Error(
+        'The saved Codex session does not belong to the assigned Codex account or could not be verified there.'
+      )
+    }
     return preparation.outcome === 'resume'
       ? {
           ...preparation,
           reconcileSharedRuntimeAuth:
+            !assignedHome &&
             normalizeRuntimePathForComparison(preparation.codexHomePath) ===
-            normalizeRuntimePathForComparison(getOrcaManagedCodexHomePath())
+              normalizeRuntimePathForComparison(getOrcaManagedCodexHomePath())
         }
       : preparation
   }

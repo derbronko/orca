@@ -1,4 +1,21 @@
 {
+  "agentAccounts": {
+    "menuTitle": "Agent accounts…",
+    "assignedTo": "Assigned account: {{value0}}",
+    "inheritProject": "Inherit project account: {{value0}}",
+    "inheritGlobal": "Inherit global selection",
+    "unavailableAccount": "Unavailable account ({{value0}})",
+    "loading": "Loading managed accounts…",
+    "localOnly": "Managed account assignment is available only on the local host.",
+    "projectDescription": "Choose managed accounts for new sessions created in this project on the selected host.",
+    "projectTitle": "Agent accounts",
+    "saveFailed": "Could not save the managed account preference.",
+    "saveNotApplied": "The host did not apply this account preference.",
+    "staleAccount": "That managed account is no longer available.",
+    "wslUnsupported": "Managed account assignment is not available for WSL yet.",
+    "workspaceDescription": "Choose managed accounts for new sessions in {{value0}}. Existing sessions keep their saved account.",
+    "workspaceTitle": "Agent accounts"
+  },
   "agentLaunch": {
     "connectSsh": "Connect to this workspace’s SSH host, then try again.",
     "sshUnavailable": "Terminal launch is unavailable on this SSH host. Open a terminal in the workspace and start the agent there.",
@@ -23187,6 +23204,7 @@
   "common": {
     "retry": "Retry",
     "cancel": "Cancel",
+    "close": "Close",
     "unassigned": "Unassigned",
     "delete": "Delete"
   },
